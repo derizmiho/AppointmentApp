@@ -1,0 +1,38 @@
+<!-- views/customer-profiles.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Profiles</title>
+</head>
+<body>
+        <!-- Include the navigation bar -->
+        <%- include('partials/nav.ejs') %>
+
+    <h1>Customer Profiles</h1>
+    <!-- Content specific to customer profiles page -->
+
+    <!-- JavaScript for customer profiles page -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Fetch and display the list of customer profiles
+            fetch('/customer-profiles')
+                .then(response => response.json())
+                .then(customers => {
+                    // Display fetched customer profiles
+                    customers.forEach(customer => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `${customer.name} - ${customer.email} - ${customer.phone}`;
+                        
+                        // Include additional details or actions related to customer profiles
+                        // You may provide links to view/edit individual profiles or perform other actions
+
+                        document.getElementById('customerProfilesList').appendChild(listItem);
+                    });
+                });
+        });
+    </script>
+</body>
+</html>
+
