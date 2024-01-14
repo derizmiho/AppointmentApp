@@ -119,14 +119,17 @@
         .then(appointments => {
             console.log('Fetched Appointments:', appointments);
 
+            // Clear all appointment titles from time slots
+            clearAllAppointmentTitles();
+
             // Display the appointments on the page
             appointments.forEach(appointment => {
                 const timeSlotId = `appointment-${appointment.time_slot.replace(':', '')}`;
                 const timeSlotElement = document.getElementById(timeSlotId);
 
-                // Add the appointment title to the time slot
+                // Add the appointment to the time slot
                 if (timeSlotElement) {
-                    timeSlotElement.textContent = `${appointment.title}`;
+                    timeSlotElement.textContent = appointment.title;
                 }
                 console.log('Updating time slot:', timeSlotId);
                 console.log('Time slot element:', timeSlotElement);
@@ -134,6 +137,24 @@
         })
         .catch(error => console.error('Error loading appointments:', error));
 }
+
+// Function to clear all appointment titles from time slots
+function clearAllAppointmentTitles() {
+    const allTimeSlots = document.getElementById('timeSlots').children;
+
+    for (const timeSlot of allTimeSlots) {
+        const timeSlotElement = timeSlot.children[1];
+        clearAppointmentTitle(timeSlotElement);
+    }
+}
+
+// Function to clear an appointment title
+function clearAppointmentTitle(element) {
+    if (element) {
+        element.textContent = 'Loading...';
+    }
+}
+
 
 // Modify the date input to use a consistent format (YYYY-MM-DD)
 function formatDateForServer(dateString) {
@@ -203,7 +224,7 @@ function selectTime(selectedTime) {
                 .then(appointments => {
                     // Display the appointments on the page
                     appointments.forEach(appointment => {
-                        const timeSlotId = `appointment-${appointment.time_slot}`;
+                        const timeSlotId = `appointment-${appointment.time_slot.replace(':', '')}`;
                         const timeSlotElement = document.getElementById(timeSlotId);
                         if (timeSlotElement) {
                             timeSlotElement.innerHTML = `<p>${appointment.title} - ${new Date(appointment.date).toLocaleString()}</p>`;
