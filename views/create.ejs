@@ -108,37 +108,70 @@
         });
 
         function fetchAndDisplayAppointments() {
-            const selectedDate = document.getElementById('date').value;
+    const selectedDate = document.getElementById('date').value;
 
-            console.log('Fetching Appointments for Date:', selectedDate);
+    console.log('Fetching Appointments for Date:', selectedDate);
 
-            // Send GET request to load appointments for the selected date
-            return fetch(`/load-appointments?date=${selectedDate}`)
-                .then(response => response.json())
-                .then(appointments => {
-                    console.log('Fetched Appointments:', appointments);
+    // Send GET request to load appointments for the selected date
+    return fetch(`/load-appointments?date=${selectedDate}`)
+        .then(response => response.json())
+        .then(appointments => {
+            console.log('Fetched Appointments:', appointments);
 
-                    // Display the appointments on the page
-                    appointments.forEach(appointment => {
-                        const timeSlotId = `appointment-${appointment.time_slot}`;
-                        const timeSlotElement = document.getElementById(timeSlotId);
-                        if (timeSlotElement) {
-                            timeSlotElement.textContent = `${appointment.title} - ${new Date(appointment.date).toLocaleString()}`;
-                        }
-                        console.log('Updating time slot:', timeSlotId);
-                        console.log('Time slot element:', timeSlotElement);
+            // Display the appointments on the page
+            appointments.forEach(appointment => {
+                const timeSlotId = `appointment-${appointment.time_slot}`;
+                const timeSlotElement = document.getElementById(timeSlotId);
+                if (timeSlotElement) {
+                    // Format the date consistently
+                    const formattedDate = new Date(appointment.date).toLocaleString();
+                    timeSlotElement.textContent = `${appointment.title} - ${formattedDate}`;
+                }
+
+                console.log('Updating time slot:', timeSlotId);
+                console.log('Time slot element:', timeSlotElement);
+
+                // Add the appointment to the appointments list
+                const appointmentsList = document.getElementById('appointmentsList');
+                const listItem = document.createElement('li');
+
+                // Format the date consistently
+                const formattedDate = new Date(appointment.date).toLocaleString();
+                listItem.textContent = `${appointment.title} - ${formattedDate}`;
+                appointmentsList.appendChild(listItem);
+            });
+        })
+        .catch(error => console.error('Error loading appointments:', error));
+}
 
 
-                        // Add the appointment to the appointments list
-                        const appointmentsList = document.getElementById('appointmentsList');
-                        const listItem = document.createElement('li');
-                        listItem.textContent = `${appointment.title} - ${new Date(appointment.date).toLocaleString()}`;
-                        appointmentsList.appendChild(listItem);
-                    });
+// Modify the date input to use a consistent format (YYYY-MM-DD)
+function formatDateForServer(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
-                })
-                .catch(error => console.error('Error loading appointments:', error));
-        }
+// Update the form submission to use the correct date format
+document.getElementById('appointmentForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    // Gather form data
+    const title = document.getElementById('title').value;
+    const date = formatDateForServer(document.getElementById('date').value);
+    const selectedTimeSlot = document.getElementById('selectedTimeSlot').value;
+
+    console.log('Form Data:', { title, date, selectedTimeSlot }); // Log the form data
+
+    // Update the input value with the new date
+    document.getElementById('date').value = date;
+
+    // Fetch and display appointments for the new date
+    fetchAndDisplayAppointments();
+});
+
 
         // Function to select a time slot
         function selectTime(selectedTime) {

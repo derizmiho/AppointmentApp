@@ -48,69 +48,79 @@ app.get('/customer-profiles', (req, res) => {
 // Fetch all appointments from the database
 app.post('/create', async (req, res) => {
   try {
-    const { title, selectedTimeSlot } = req.body;
-    const connection = await db.getConnection();
+      const { title, selectedTimeSlot } = req.body;
+      const connection = await db.getConnection();
 
-    try {
-      const date = new Date().toISOString().slice(0, 19).replace('T', ' '); // Format date as 'YYYY-MM-DD HH:mm:ss'
-      const timeSlotString = selectedTimeSlot.toString();
+      try {
+          // Format date as 'YYYY-MM-DD HH:mm:ss'
+          const date = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-      const query = 'INSERT INTO appointments (title, date, time_slot) VALUES (?, ?, ?)';
-      const [result] = await connection.query(query, [title, date, timeSlotString]);
+          // Format time slot as 'HH:mm:ss'
+          const timeSlotString = selectedTimeSlot.toString();
 
-      console.log('MySQL Query Result:', result);
+          const query = 'INSERT INTO appointments (title, date, time_slot) VALUES (?, ?, ?)';
+          const [result] = await connection.query(query, [title, date, timeSlotString]);
 
-      if (result.affectedRows === 1) {
-        const newAppointment = {
-          id: result.insertId,
-          title,
-          date,
-          time_slot: timeSlotString,
-        };
+          console.log('MySQL Query Result:', result);
 
-        connection.release(); // Release the connection back to the pool
-        return res.json(newAppointment);
-      } else {
-        console.error('Unexpected number of affected rows:', result.affectedRows);
-        res.status(500).json({ error: 'Internal Server Error' });
+          if (result.affectedRows === 1) {
+              const newAppointment = {
+                  id: result.insertId,
+                  title,
+                  date: new Date(date).toISOString(), // Format the date consistently
+                  time_slot: timeSlotString,
+              };
+
+              connection.release(); // Release the connection back to the pool
+              return res.json(newAppointment);
+          } else {
+              console.error('Unexpected number of affected rows:', result.affectedRows);
+              res.status(500).json({ error: 'Internal Server Error' });
+          }
+      } catch (insertError) {
+          console.error('Error during execution:', insertError);
+          res.status(500).json({ error: 'Internal Server Error', details: insertError.message });
       }
-    } catch (insertError) {
-      console.error('Error during execution:', insertError);
-      res.status(500).json({ error: 'Internal Server Error', details: insertError.message });
-    }
   } catch (connectionError) {
-    console.error('Error establishing connection:', connectionError);
-    res.status(500).json({ error: 'Internal Server Error', details: connectionError.message });
+      console.error('Error establishing connection:', connectionError);
+      res.status(500).json({ error: 'Internal Server Error', details: connectionError.message });
   }
 });
 
-// Express Route for Loading Appointments
+
+// Fetch all appointments from the database
 app.get('/load-appointments', async (req, res) => {
   try {
-    const connection = await db.getConnection();
+      const { date, week } = req.query;
+      const connection = await db.getConnection();
 
-    try {
-      const [results, fields] = await connection.query('SELECT * FROM appointments');
+      try {
+          let query;
+          if (date) {
+              // Fetch appointments for a specific date
+              query = 'SELECT * FROM appointments WHERE DATE(date) = ?';
+          } else if (week) {
+              // Fetch appointments for a specific week
+              query = 'SELECT * FROM appointments WHERE WEEK(date) = ?';
+          } else {
+              // Fetch all appointments
+              query = 'SELECT * FROM appointments';
+          }
 
-      // Check if results is an array
-      if (Array.isArray(results) && results.length > 0) {
-        const appointments = results.map(result => ({
-          id: result.id,
-          title: result.title,
-          time_slot: result.time_slot,
-          date: result.date,
-        }));
-        res.json(appointments);
-      } else {
-        console.error('Error loading appointments: No valid data received');
-        res.status(500).json({ error: 'Internal Server Error' });
+          const [appointments] = await connection.query(query, [date || week]);
+
+          console.log('Fetched Appointments:', appointments);
+
+          res.json(appointments);
+      } catch (selectError) {
+          console.error('Error during execution:', selectError);
+          res.status(500).json({ error: 'Internal Server Error', details: selectError.message });
+      } finally {
+          connection.release(); // Release the connection back to the pool
       }
-    } finally {
-      connection.release(); // Release the connection back to the pool
-    }
-  } catch (error) {
-    console.error('Error loading appointments:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+  } catch (connectionError) {
+      console.error('Error establishing connection:', connectionError);
+      res.status(500).json({ error: 'Internal Server Error', details: connectionError.message });
   }
 });
 
