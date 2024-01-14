@@ -4,21 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Appointment</title>
+    <title>Create and View Appointments</title>
 </head>
 <body>
     <!-- Include the navigation bar -->
     <%- include('partials/nav.ejs') %>
     
-    <h1>Create Appointment</h1>
+    <h1>Create and View Appointments</h1>
     <!-- Form for creating a new appointment -->
     <form id="appointmentForm">
         <label for="title">Title:</label>
         <input type="text" id="title" required>
-        <label for="date">Date:</label>
-        <input type="datetime-local" id="date" required>
+        <label for="date">Select Date:</label>
+        <input type="date" id="date" required>
+
+        <!-- Simplify the time slot input -->
+        <label for="selectedTimeSlot">Select Time Slot:</label>
+        <input type="text" id="selectedTimeSlot" placeholder="HH:mm" required>
+
         <button type="submit">Add Appointment</button>
     </form>
+    <!-- Display available time slots -->
+    <div id="timeSlots">
+        <% const startTime = 8; %>
+        <% const endTime = 16; %>
+        <% const interval = 30; %>
+
+        <!-- Display today's date -->
+        <p>Today's Date: <%= new Date().toLocaleDateString() %></p>
+
+        <!-- Loop through time slots and display them vertically -->
+        <% for (let hour = startTime; hour < endTime; hour++) { %>
+            <% for (let minute = 0; minute < 60; minute += interval) { %>
+                <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
+                <div>
+                    <p><%= timeSlotValue %></p>
+                    <p id="<%= `appointment-${timeSlotValue}` %>">Placeholder for Appointment</p>
+                </div>
+            <% } %>
+        <% } %>
+    </div>
 
     <!-- List to display appointments -->
     <ul id="appointmentsList"></ul>
@@ -26,11 +51,14 @@
     <!-- JavaScript for create page -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Load existing appointments on page load
+            fetchAndDisplayAppointments();
+
             // Handle form submission to create a new appointment
             document.getElementById('appointmentForm').addEventListener('submit', (event) => {
                 event.preventDefault();
                 const title = document.getElementById('title').value;
-                const date = document.getElementById('date').value;
+                const selectedTimeSlot = document.getElementById('selectedTimeSlot').value;
 
                 // Send POST request to create appointment
                 fetch('/create', {
@@ -38,7 +66,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ title, date }),
+                    body: JSON.stringify({ title, selectedTimeSlot: selectedTimeSlot.toString() }),
                 })
                 .then(response => response.json())
                 .then(newAppointment => {
@@ -51,7 +79,30 @@
                 .catch(error => console.error('Error creating appointment:', error));
             });
         });
+
+        // Function to fetch and display appointments
+        function fetchAndDisplayAppointments() {
+            // Send GET request to load appointments
+            fetch('/load-appointments')
+                .then(response => response.json())
+                .then(appointments => {
+                    // Display the appointments on the page
+                    const appointmentsList = document.getElementById('appointmentsList');
+                    appointmentsList.innerHTML = ''; // Clear existing list
+
+                    appointments.forEach(appointment => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `${appointment.title} - ${new Date(appointment.date).toLocaleString()}`;
+                        appointmentsList.appendChild(listItem);
+                    });
+                })
+                .catch(error => console.error('Error loading appointments:', error));
+        }
+
+        // Function to select a time slot
+        function selectTime(selectedTime) {
+            document.getElementById('selectedTimeSlot').value = selectedTime;
+        }
     </script>
 </body>
 </html>
-

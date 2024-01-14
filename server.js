@@ -1,6 +1,6 @@
 // Import necessary modules
 const express = require('express');
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');
 const path = require('path');
 const ejs = require('ejs'); // Import the EJS view engine
 
@@ -10,20 +10,14 @@ const port = 3000;
 app.use(express.json());
 
 // MySQL connection configuration
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: 'localhost',
   user: 'root',
   password: 'Joseph12!',
   database: 'your_mysql_database',
-});
-
-// Connect to MySQL
-db.connect((err) => {
-  if (err) {
-    console.error('Error connecting to MySQL:', err);
-  } else {
-    console.log('Connected to MySQL database');
-  }
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 // Set EJS as the view engine
@@ -52,35 +46,85 @@ app.get('/customer-profiles', (req, res) => {
 });
 
 // Fetch all appointments from the database
-app.get('/appointments', (req, res) => {
-  db.query('SELECT * FROM appointments', (err, results) => {
-    if (err) {
-      console.error('Error executing MySQL query:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
-    } else {
-      // Render the 'appointments' template with fetched data
-      res.render('appointments', { appointments: results });
+app.post('/create', async (req, res) => {
+  try {
+    const { title, selectedTimeSlot } = req.body;
+    const connection = await db.getConnection();
+
+    try {
+      const date = new Date().toISOString().slice(0, 19).replace('T', ' '); // Format date as 'YYYY-MM-DD HH:mm:ss'
+      const timeSlotString = selectedTimeSlot.toString();
+
+      const query = 'INSERT INTO appointments (title, date, time_slot) VALUES (?, ?, ?)';
+      const [result] = await connection.query(query, [title, date, timeSlotString]);
+
+      console.log('MySQL Query Result:', result);
+
+      if (result.affectedRows === 1) {
+        const newAppointment = {
+          id: result.insertId,
+          title,
+          date,
+          time_slot: timeSlotString,
+        };
+
+        connection.release(); // Release the connection back to the pool
+        return res.json(newAppointment);
+      } else {
+        console.error('Unexpected number of affected rows:', result.affectedRows);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    } catch (insertError) {
+      console.error('Error during execution:', insertError);
+      res.status(500).json({ error: 'Internal Server Error', details: insertError.message });
     }
-  });
+  } catch (connectionError) {
+    console.error('Error establishing connection:', connectionError);
+    res.status(500).json({ error: 'Internal Server Error', details: connectionError.message });
+  }
 });
 
-// Handle the creation of a new appointment
-app.post('/create', (req, res) => {
-  console.log('Received request to create appointment:', req.body);
+/// Express Route for Loading Appointments
+app.get('/load-appointments', async (req, res) => {
+  try {
+    const connection = await db.getConnection();
 
-  const { title, date } = req.body;
+    try {
+      const [results, fields] = await connection.query('SELECT * FROM appointments');
 
-  // Insert new appointment into MySQL
-  db.query('INSERT INTO appointments (title, date) VALUES (?, ?)', [title, date], (err, results) => {
-    if (err) {
-      console.error('Error executing MySQL query:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
-    } else {
-      const newAppointment = { id: results.insertId, title, date };
-      res.json(newAppointment);
+      // Check if results is an array
+      if (Array.isArray(results) && results.length > 0) {
+        const appointments = results.map(result => ({
+          id: result.id,
+          title: result.title,
+          date: result.date,
+        }));
+        res.json(appointments);
+      } else {
+        console.error('Error loading appointments: No valid data received');
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    } finally {
+      connection.release(); // Release the connection back to the pool
     }
-  });
+  } catch (error) {
+    console.error('Error loading appointments:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
+
+
+// Assuming you have an endpoint for fetching appointments
+app.get('/get-appointments', (req, res) => {
+  // Fetch appointments from your database
+  const appointments = [
+    { id: 1, title: 'Meeting', date: '2022-01-15T10:00:00' },
+    // Add more appointments as needed
+  ];
+
+  res.json(appointments);
+});
+
 // Server-side code for canceling an appointment
 app.post('/cancel-appointment/:id', (req, res) => {
   const appointmentId = req.params.id;
@@ -96,9 +140,31 @@ app.post('/cancel-appointment/:id', (req, res) => {
   });
 });
 
+app.post('/edit-appointment/:id', (req, res) => {
+  const appointmentId = req.params.id;
+  const { date } = req.body;
+
+  // Update the appointment date in the database
+  db.query('UPDATE appointments SET date = ? WHERE id = ?', [date, appointmentId], (err, result) => {
+    if (err) {
+      console.error('Error updating appointment date:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    } else {
+      // Fetch the updated appointment data
+      db.query('SELECT * FROM appointments WHERE id = ?', [appointmentId], (fetchErr, fetchResult) => {
+        if (fetchErr) {
+          console.error('Error fetching updated appointment data:', fetchErr);
+          res.status(500).json({ error: 'Internal Server Error' });
+        } else {
+          const updatedAppointment = fetchResult[0];
+          res.json({ updatedAppointment });
+        }
+      });
+    }
+  });
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
-
-
