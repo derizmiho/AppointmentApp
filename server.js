@@ -84,7 +84,7 @@ app.post('/create', async (req, res) => {
   }
 });
 
-/// Express Route for Loading Appointments
+// Express Route for Loading Appointments
 app.get('/load-appointments', async (req, res) => {
   try {
     const connection = await db.getConnection();
@@ -97,6 +97,7 @@ app.get('/load-appointments', async (req, res) => {
         const appointments = results.map(result => ({
           id: result.id,
           title: result.title,
+          time_slot: result.time_slot,
           date: result.date,
         }));
         res.json(appointments);

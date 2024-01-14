@@ -1,4 +1,3 @@
-<!-- views/create.ejs -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -94,13 +93,10 @@
                 const date = currentDateInput.value;
                 const selectedTimeSlot = document.getElementById('selectedTimeSlot').value;
 
-                // ... (rest of your code)
+                console.log('Form Data:', { title, date, selectedTimeSlot }); // Log the form data
 
                 // Update the input value with the new date
                 currentDateInput.value = formatDateDefault();
-
-                // Display the updated current day
-                displayCurrentDay(newDate);
 
                 // Fetch and display appointments for the new date
                 fetchAndDisplayAppointments();
@@ -111,14 +107,17 @@
             displayCurrentDay(currentDate);
         });
 
-        // Function to fetch and display appointments
         function fetchAndDisplayAppointments() {
             const selectedDate = document.getElementById('date').value;
 
+            console.log('Fetching Appointments for Date:', selectedDate);
+
             // Send GET request to load appointments for the selected date
-            fetch(`/load-appointments?date=${selectedDate}`)
+            return fetch(`/load-appointments?date=${selectedDate}`)
                 .then(response => response.json())
                 .then(appointments => {
+                    console.log('Fetched Appointments:', appointments);
+
                     // Display the appointments on the page
                     appointments.forEach(appointment => {
                         const timeSlotId = `appointment-${appointment.time_slot}`;
@@ -126,7 +125,17 @@
                         if (timeSlotElement) {
                             timeSlotElement.textContent = `${appointment.title} - ${new Date(appointment.date).toLocaleString()}`;
                         }
+                        console.log('Updating time slot:', timeSlotId);
+                        console.log('Time slot element:', timeSlotElement);
+
+
+                        // Add the appointment to the appointments list
+                        const appointmentsList = document.getElementById('appointmentsList');
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `${appointment.title} - ${new Date(appointment.date).toLocaleString()}`;
+                        appointmentsList.appendChild(listItem);
                     });
+
                 })
                 .catch(error => console.error('Error loading appointments:', error));
         }
@@ -137,28 +146,28 @@
         }
 
         function switchDay(offset) {
-    const currentDateInput = document.getElementById('date');
-    let currentDate = new Date(currentDateInput.value);
+            const currentDateInput = document.getElementById('date');
+            let currentDate = new Date(currentDateInput.value);
 
-    if (isNaN(currentDate.getTime())) {
-        // If the current date is invalid, use the default formatted date
-        currentDate = new Date(formatDateDefault());
-        currentDateInput.value = formatDateDefault();
-    }
+            if (isNaN(currentDate.getTime())) {
+                // If the current date is invalid, use the default formatted date
+                currentDate = new Date(formatDateDefault());
+                currentDateInput.value = formatDateDefault();
+            }
 
-    // Calculate the new day of the week
-    const newDate = new Date(currentDate);
-    newDate.setDate(currentDate.getDate() + offset);
+            // Calculate the new day of the week
+            const newDate = new Date(currentDate);
+            newDate.setDate(currentDate.getDate() + offset);
 
-    // Update the input value with the new date
-    currentDateInput.value = newDate.toISOString().slice(0, 10);
+            // Update the input value with the new date
+            currentDateInput.value = newDate.toISOString().slice(0, 10);
 
-    // Display the updated current day
-    displayCurrentDay(newDate);
+            // Display the updated current day
+            displayCurrentDay(newDate);
 
-    // Fetch and display appointments for the new date
-    fetchAndDisplayAppointments();
-}
+            // Fetch and display appointments for the new date
+            fetchAndDisplayAppointments();
+        }
 
         // Function to load appointments for the selected week
         function loadAppointmentsForWeek() {
@@ -173,7 +182,7 @@
                         const timeSlotId = `appointment-${appointment.time_slot}`;
                         const timeSlotElement = document.getElementById(timeSlotId);
                         if (timeSlotElement) {
-                            timeSlotElement.textContent = `${appointment.title} - ${new Date(appointment.date).toLocaleString()}`;
+                            timeSlotElement.innerHTML = `<p>${appointment.title} - ${new Date(appointment.date).toLocaleString()}</p>`;
                         }
                     });
                 })
