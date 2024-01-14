@@ -43,18 +43,19 @@
     </select>
 
     <!-- Display available time slots -->
-    <div id="timeSlots">
-        <!-- Loop through time slots and display them vertically -->
-        <% for (let hour = 8; hour < 16; hour++) { %>
-            <% for (let minute = 0; minute < 60; minute += 30) { %>
-                <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
-                <div onclick="selectTime('<%= timeSlotValue %>')">
-                    <p><%= timeSlotValue %></p>
-                    <p id="<%= `appointment-${timeSlotValue}` %>">Loading...</p>
-                </div>
-            <% } %>
+<div id="timeSlots">
+    <!-- Loop through time slots and display them vertically -->
+    <% for (let hour = 8; hour < 16; hour++) { %>
+        <% for (let minute = 0; minute < 60; minute += 30) { %>
+            <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
+            <div onclick="selectTime('<%= timeSlotValue %>')">
+                <p><%= timeSlotValue %></p>
+                <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>">Loading...</p>
+            </div>
         <% } %>
-    </div>
+    <% } %>
+</div>
+
 
     <!-- List to display appointments -->
     <ul id="appointmentsList"></ul>
@@ -66,6 +67,10 @@
             const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
             return date.toLocaleDateString('en-US', options);
         }
+        function selectTime(selectedTime) {
+    const formattedTime = selectedTime.replace(':', '');
+    document.getElementById(`appointment-${formattedTime}`).value = selectedTime;
+}
 
         // Function to get the default formatted date as "yyyy-MM-dd"
         function formatDateDefault() {
@@ -120,29 +125,35 @@
 
             // Display the appointments on the page
             appointments.forEach(appointment => {
-                const timeSlotId = `appointment-${appointment.time_slot}`;
+                const timeSlotId = `appointment-${appointment.time_slot.replace(':', '')}`;
                 const timeSlotElement = document.getElementById(timeSlotId);
-                if (timeSlotElement) {
-                    // Format the date consistently
-                    const formattedDate = new Date(appointment.date).toLocaleString();
-                    timeSlotElement.textContent = `${appointment.title} - ${formattedDate}`;
-                }
 
+                // Add the appointment to the time slot
+                if (timeSlotElement) {
+                    timeSlotElement.textContent = `${appointment.title} - ${new Date(appointment.date).toLocaleString()}`;
+                }
                 console.log('Updating time slot:', timeSlotId);
                 console.log('Time slot element:', timeSlotElement);
 
                 // Add the appointment to the appointments list
                 const appointmentsList = document.getElementById('appointmentsList');
                 const listItem = document.createElement('li');
-
-                // Format the date consistently
-                const formattedDate = new Date(appointment.date).toLocaleString();
-                listItem.textContent = `${appointment.title} - ${formattedDate}`;
+                listItem.textContent = `${appointment.title} - ${new Date(appointment.date).toLocaleString()}`;
                 appointmentsList.appendChild(listItem);
             });
         })
         .catch(error => console.error('Error loading appointments:', error));
 }
+
+// Modify the date input to use a consistent format (YYYY-MM-DD)
+function formatDateForServer(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 
 
 // Modify the date input to use a consistent format (YYYY-MM-DD)
@@ -173,10 +184,11 @@ document.getElementById('appointmentForm').addEventListener('submit', (event) =>
 });
 
 
-        // Function to select a time slot
-        function selectTime(selectedTime) {
-            document.getElementById('selectedTimeSlot').value = selectedTime;
-        }
+function selectTime(selectedTime) {
+    const formattedTime = selectedTime.replace(':', '');
+    document.getElementById(`appointment-${formattedTime}`).value = selectedTime;
+}
+
 
         function switchDay(offset) {
             const currentDateInput = document.getElementById('date');
