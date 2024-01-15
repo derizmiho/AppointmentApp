@@ -48,12 +48,12 @@
         <% for (let hour = 8; hour < 16; hour++) { %>
             <% for (let minute = 0; minute < 60; minute += 30) { %>
                 <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
-                <div onclick="selectTime('<%= timeSlotValue %>')">
-                    <p><%= timeSlotValue %></p>
-                    <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>">Loading...</p>
+                <div onclick="selectTime('<%= timeSlotValue %>')" style="display: flex; align-items: center;">
+                    <p style="margin-right: 10px;"><%= timeSlotValue %></p>
+                    <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
                 </div>
             <% } %>
-        <% } %>
+        <% } %>                
     </div>
 
     <!-- JavaScript for create page -->
@@ -72,6 +72,7 @@
         timeSlotElement.textContent = selectedTime.slice(0, 5); // Set the text content with HH:mm
     }
 }
+
 
 
 
@@ -138,7 +139,7 @@
             const currentDate = new Date();
             displayCurrentDay(currentDate);
         });
-        
+
         // Function to clear all appointment titles from time slots
         function clearAllAppointmentTitles() {
             const allTimeSlots = document.getElementById('timeSlots').children;
@@ -152,7 +153,7 @@
         // Function to clear an appointment title
         function clearAppointmentTitle(element) {
             if (element) {
-                element.textContent = 'Loading...';
+                element.textContent = '';
             }
         }
 
@@ -177,9 +178,30 @@
                         const timeSlotElement = document.getElementById(timeSlotId);
 
                         // Add the appointment to the time slot
-                        if (timeSlotElement) {
-                            timeSlotElement.textContent = appointment.title;
-                        }
+if (timeSlotElement) {
+    // Create a new div for the time slot and appointment with inline styles
+    const containerDiv = document.createElement('div');
+    containerDiv.style.display = 'flex';
+    containerDiv.style.alignItems = 'center';
+
+    // Create a div for the time slot
+    const timeSlotDiv = document.createElement('div');
+    timeSlotDiv.textContent = timeSlotElement.textContent;
+
+    // Create a div for the appointment title
+    const appointmentDiv = document.createElement('div');
+    appointmentDiv.textContent = appointment.title;
+    appointmentDiv.style.marginLeft = '10px'; // Adjust the margin as needed
+
+    // Append both divs to the container
+    containerDiv.appendChild(timeSlotDiv);
+    containerDiv.appendChild(appointmentDiv);
+
+    // Replace the content of the time slot element with the container
+    timeSlotElement.innerHTML = '';
+    timeSlotElement.appendChild(containerDiv);
+}
+
                         console.log('Updating time slot:', timeSlotId);
                         console.log('Time slot element:', timeSlotElement);
                     });
