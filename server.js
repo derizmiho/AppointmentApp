@@ -12,9 +12,9 @@ app.use(express.json());
 // MySQL connection configuration
 const db = mysql.createPool({
   host: 'localhost',
-  user: 'root',
-  password: 'Joseph12!',
-  database: 'your_mysql_database',
+  user: 'test_user',
+  password: 'test_password',
+  database: 'test_database',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -44,30 +44,43 @@ app.get('/customer-profiles', (req, res) => {
   // Render the 'customer-profile' template
   res.render('customer-profiles');
 });
+app.get('/test-query', async (req, res) => {
+  try {
+      const [result] = await db.query('SELECT 1');
+      res.json({ success: true, result });
+  } catch (error) {
+      console.error('Error during test query:', error);
+      res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+});
 
 // Fetch all appointments from the database
 app.post('/create', async (req, res) => {
   try {
-      const { title, selectedTimeSlot } = req.body;
+      const { title, date, timeSlot } = req.body;
+      console.log('Received Date:', date);
+
       const connection = await db.getConnection();
 
       try {
-          // Format date as 'YYYY-MM-DD HH:mm:ss'
-          const date = new Date().toISOString().slice(0, 19).replace('T', ' ');
-
           // Format time slot as 'HH:mm:ss'
-          const timeSlotString = selectedTimeSlot.toString();
+          const timeSlotString = timeSlot !== undefined ? timeSlot.toString() : '';
+
+          // Use the received date directly, without generating a new one
+          const formattedDate = new Date(date).toISOString().slice(0, 10);
 
           const query = 'INSERT INTO appointments (title, date, time_slot) VALUES (?, ?, ?)';
-          const [result] = await connection.query(query, [title, date, timeSlotString]);
-
+          const [result] = await connection.query(query, [title, formattedDate, timeSlotString]);
+          
+          console.log('Create endpoint reached');
+          console.log('Query:', query, 'Params:', [title, formattedDate, timeSlotString]);
           console.log('MySQL Query Result:', result);
 
           if (result.affectedRows === 1) {
               const newAppointment = {
                   id: result.insertId,
                   title,
-                  date: new Date(date).toISOString(), // Format the date consistently
+                  date: formattedDate,
                   time_slot: timeSlotString,
               };
 
@@ -86,6 +99,7 @@ app.post('/create', async (req, res) => {
       res.status(500).json({ error: 'Internal Server Error', details: connectionError.message });
   }
 });
+
 
 
 // Fetch all appointments from the database

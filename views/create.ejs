@@ -19,8 +19,8 @@
         <input type="date" id="date" required>
 
         <!-- Simplify the time slot input -->
-        <label for="selectedTimeSlot">Select Time Slot:</label>
-        <input type="text" id="selectedTimeSlot" placeholder="HH:mm" required>
+        <label for="timeSlot">Select Time Slot:</label>
+        <input type="text" id="timeSlot" placeholder="HH:mm" required>
 
         <button type="submit">Add Appointment</button>
     </form>
@@ -43,18 +43,18 @@
     </select>
 
     <!-- Display available time slots -->
-<div id="timeSlots">
-    <!-- Loop through time slots and display them vertically -->
-    <% for (let hour = 8; hour < 16; hour++) { %>
-        <% for (let minute = 0; minute < 60; minute += 30) { %>
-            <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
-            <div onclick="selectTime('<%= timeSlotValue %>')">
-                <p><%= timeSlotValue %></p>
-                <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>">Loading...</p>
-            </div>
+    <div id="timeSlots">
+        <!-- Loop through time slots and display them vertically -->
+        <% for (let hour = 8; hour < 16; hour++) { %>
+            <% for (let minute = 0; minute < 60; minute += 30) { %>
+                <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
+                <div onclick="selectTime('<%= timeSlotValue %>')">
+                    <p><%= timeSlotValue %></p>
+                    <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>">Loading...</p>
+                </div>
+            <% } %>
         <% } %>
-    <% } %>
-</div>
+    </div>
 
     <!-- JavaScript for create page -->
     <script>
@@ -63,10 +63,17 @@
             const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
             return date.toLocaleDateString('en-US', options);
         }
+
         function selectTime(selectedTime) {
-            const formattedTime = selectedTime.replace(':', '');
-             document.getElementById(`appointment-${formattedTime}`).value = selectedTime;
+    const formattedTime = selectedTime.slice(0, 5); // Extract HH:mm from HH:mm:ss
+    const timeSlotElement = document.getElementById(`appointment-${formattedTime}`);
+
+    if (timeSlotElement) {
+        timeSlotElement.textContent = selectedTime.slice(0, 5); // Set the text content with HH:mm
+    }
 }
+
+
 
         // Function to get the default formatted date as "yyyy-MM-dd"
         function formatDateDefault() {
@@ -85,23 +92,47 @@
             // Load existing appointments on page load
             fetchAndDisplayAppointments();
 
-            // Handle form submission to create a new appointment
-            document.getElementById('appointmentForm').addEventListener('submit', (event) => {
-                event.preventDefault();
+        // Handle form submission to create a new appointment
+        document.getElementById('appointmentForm').addEventListener('submit', (event) => {
+        event.preventDefault();
 
-                // Gather form data
-                const title = document.getElementById('title').value;
-                const date = currentDateInput.value;
-                const selectedTimeSlot = document.getElementById('selectedTimeSlot').value;
+       // Gather form data
+       const title = document.getElementById('title').value;
+        const date = currentDateInput.value;
 
-                console.log('Form Data:', { title, date, selectedTimeSlot }); // Log the form data
+        // Check if timeSlot is defined and not empty
+        const timeSlotElement = document.getElementById('timeSlot');
+        const timeSlot = timeSlotElement ? timeSlotElement.value : null;
 
-                // Update the input value with the new date
-                currentDateInput.value = formatDateDefault();
+        // Check if timeSlot is defined and not empty
+        if (timeSlot === null || timeSlot.trim() === '') {
+            console.error('Selected time slot is empty or null');
+            return; // Do not proceed with the fetch request
+        }
 
-                // Fetch and display appointments for the new date
-                fetchAndDisplayAppointments();
-            });
+        console.log('Form Data:', { title, date, timeSlot }); // Log the form data
+
+        // Make a fetch call to create the appointment
+        fetch('/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ title, date, timeSlot }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Create Appointment Response:', data);
+
+            // Fetch and display appointments for the new date
+            fetchAndDisplayAppointments();
+        })
+        .catch(error => console.error('Error creating appointment:', error));
+
+        // Update the input value with the new date
+        currentDateInput.value = formatDateDefault();
+    });
+
 
             // Display the current day with the current date
             const currentDate = new Date();
@@ -109,137 +140,113 @@
         });
 
         function fetchAndDisplayAppointments() {
-    const selectedDate = document.getElementById('date').value;
+            const selectedDate = document.getElementById('date').value;
 
-    console.log('Fetching Appointments for Date:', selectedDate);
+            console.log('Fetching Appointments for Date:', selectedDate);
 
-    // Send GET request to load appointments for the selected date
-    return fetch(`/load-appointments?date=${selectedDate}`)
-        .then(response => response.json())
-        .then(appointments => {
-            console.log('Fetched Appointments:', appointments);
-
-            // Clear all appointment titles from time slots
-            clearAllAppointmentTitles();
-
-            // Display the appointments on the page
-            appointments.forEach(appointment => {
-                const timeSlotId = `appointment-${appointment.time_slot.replace(':', '')}`;
-                const timeSlotElement = document.getElementById(timeSlotId);
-
-                // Add the appointment to the time slot
-                if (timeSlotElement) {
-                    timeSlotElement.textContent = appointment.title;
-                }
-                console.log('Updating time slot:', timeSlotId);
-                console.log('Time slot element:', timeSlotElement);
-            });
-        })
-        .catch(error => console.error('Error loading appointments:', error));
-}
-
-// Function to clear all appointment titles from time slots
-function clearAllAppointmentTitles() {
-    const allTimeSlots = document.getElementById('timeSlots').children;
-
-    for (const timeSlot of allTimeSlots) {
-        const timeSlotElement = timeSlot.children[1];
-        clearAppointmentTitle(timeSlotElement);
-    }
-}
-
-// Function to clear an appointment title
-function clearAppointmentTitle(element) {
-    if (element) {
-        element.textContent = 'Loading...';
-    }
-}
-
-
-// Modify the date input to use a consistent format (YYYY-MM-DD)
-function formatDateForServer(dateString) {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-// Update the form submission to use the correct date format
-document.getElementById('appointmentForm').addEventListener('submit', (event) => {
-    event.preventDefault();
-
-    // Gather form data
-    const title = document.getElementById('title').value;
-    const date = formatDateForServer(document.getElementById('date').value);
-    const selectedTimeSlot = document.getElementById('selectedTimeSlot').value;
-
-    console.log('Form Data:', { title, date, selectedTimeSlot }); // Log the form data
-
-    // Update the input value with the new date
-    document.getElementById('date').value = date;
-
-    // Fetch and display appointments for the new date
-    fetchAndDisplayAppointments();
-});
-
-
-function selectTime(selectedTime) {
-    const formattedTime = selectedTime.replace(':', '');
-    document.getElementById(`appointment-${formattedTime}`).value = selectedTime;
-}
-
-
-        function switchDay(offset) {
-            const currentDateInput = document.getElementById('date');
-            let currentDate = new Date(currentDateInput.value);
-
-            if (isNaN(currentDate.getTime())) {
-                // If the current date is invalid, use the default formatted date
-                currentDate = new Date(formatDateDefault());
-                currentDateInput.value = formatDateDefault();
-            }
-
-            // Calculate the new day of the week
-            const newDate = new Date(currentDate);
-            newDate.setDate(currentDate.getDate() + offset);
-
-            // Update the input value with the new date
-            currentDateInput.value = newDate.toISOString().slice(0, 10);
-
-            // Display the updated current day
-            displayCurrentDay(newDate);
-
-            // Fetch and display appointments for the new date
-            fetchAndDisplayAppointments();
-        }
-
-        // Function to load appointments for the selected week
-        function loadAppointmentsForWeek() {
-            const selectedWeek = document.getElementById('weekSelect').value;
-
-            // Send GET request to load appointments for the selected week
-            fetch(`/load-appointments?week=${selectedWeek}`)
+            // Send GET request to load appointments for the selected date
+            fetch(`/load-appointments?date=${selectedDate}`)
                 .then(response => response.json())
                 .then(appointments => {
+                    console.log('Fetched Appointments:', appointments);
+
+                    // Clear all appointment titles from time slots
+                    clearAllAppointmentTitles();
+
                     // Display the appointments on the page
                     appointments.forEach(appointment => {
                         const timeSlotId = `appointment-${appointment.time_slot.replace(':', '')}`;
                         const timeSlotElement = document.getElementById(timeSlotId);
+
+                        // Add the appointment to the time slot
                         if (timeSlotElement) {
-                            timeSlotElement.innerHTML = `<p>${appointment.title} - ${new Date(appointment.date).toLocaleString()}</p>`;
+                            timeSlotElement.textContent = appointment.title;
                         }
+                        console.log('Updating time slot:', timeSlotId);
+                        console.log('Time slot element:', timeSlotElement);
                     });
                 })
                 .catch(error => console.error('Error loading appointments:', error));
         }
 
-        // Function to display the current day
-        function displayCurrentDay(date) {
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const formattedDate = date.toLocaleDateString('en-US', options);
-            document.getElementById('currentDay').textContent = `Current Day: ${formattedDate}`;
+        // Function to clear all appointment titles from time slots
+        function clearAllAppointmentTitles() {
+            const allTimeSlots = document.getElementById('timeSlots').children;
+
+            for (const timeSlot of allTimeSlots) {
+                const timeSlotElement = timeSlot.children[1];
+                clearAppointmentTitle(timeSlotElement);
+            }
         }
+
+        // Function to clear an appointment title
+        function clearAppointmentTitle(element) {
+            if (element) {
+                element.textContent = 'Loading...';
+            }
+        }
+
+        // Modify the date input to use a consistent format (YYYY-MM-DD)
+        function formatDateForServer(dateString) {
+            const date = new Date(dateString);
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+}
+
+// Update the form submission to use the correct date format
+document.getElementById('appointmentForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    // Gather form data
+    const title = document.getElementById('title').value;
+    const dateInput = document.getElementById('date');
+    const date = formatDateForServer(dateInput.value);
+    const timeSlot = document.getElementById('timeSlot').value;
+
+    console.log('Form Data:', { title, date, timeSlot }); // Log the form data
+
+    try {
+        // Fetch and display appointments for the new date
+        await fetchAndDisplayAppointments();
+    } catch (error) {
+        console.error('Error fetching and displaying appointments:', error);
+    }
+});
+
+            function switchDay(offset) {
+                const currentDateInput = document.getElementById('date');
+                let currentDate = new Date(currentDateInput.value);
+
+                if (isNaN(currentDate.getTime())) {
+                    // If the current date is invalid, use the default formatted date
+                    currentDate = new Date(formatDateDefault());
+                    currentDateInput.value = formatDateDefault();
+                }
+
+                // Calculate the new day of the week
+                const newDate = new Date(currentDate);
+                newDate.setDate(currentDate.getDate() + offset);
+
+                // Update the input value with the new date
+                currentDateInput.value = newDate.toISOString().slice(0, 10);
+
+                // Display the updated current day
+                displayCurrentDay(newDate);
+
+                // Fetch and display appointments for the new date
+                fetchAndDisplayAppointments();
+            }
+
+
+            // Function to display the current day
+            function displayCurrentDay(date) {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const formattedDate = date.toLocaleDateString('en-US', options);
+                document.getElementById('currentDay').textContent = `Current Day: ${formattedDate}`;
+            }
+
     </script>
 </body>
 </html>
