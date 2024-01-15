@@ -138,6 +138,24 @@
             const currentDate = new Date();
             displayCurrentDay(currentDate);
         });
+        
+        // Function to clear all appointment titles from time slots
+        function clearAllAppointmentTitles() {
+            const allTimeSlots = document.getElementById('timeSlots').children;
+
+            for (const timeSlot of allTimeSlots) {
+                const timeSlotElement = timeSlot.children[1];
+                clearAppointmentTitle(timeSlotElement);
+            }
+        }
+
+        // Function to clear an appointment title
+        function clearAppointmentTitle(element) {
+            if (element) {
+                element.textContent = 'Loading...';
+            }
+        }
+
 
         function fetchAndDisplayAppointments() {
             const selectedDate = document.getElementById('date').value;
@@ -169,23 +187,7 @@
                 .catch(error => console.error('Error loading appointments:', error));
         }
 
-        // Function to clear all appointment titles from time slots
-        function clearAllAppointmentTitles() {
-            const allTimeSlots = document.getElementById('timeSlots').children;
-
-            for (const timeSlot of allTimeSlots) {
-                const timeSlotElement = timeSlot.children[1];
-                clearAppointmentTitle(timeSlotElement);
-            }
-        }
-
-        // Function to clear an appointment title
-        function clearAppointmentTitle(element) {
-            if (element) {
-                element.textContent = 'Loading...';
-            }
-        }
-
+        
         // Modify the date input to use a consistent format (YYYY-MM-DD)
         function formatDateForServer(dateString) {
             const date = new Date(dateString);
