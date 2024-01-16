@@ -10,21 +10,6 @@
     <%- include('partials/nav.ejs') %>
     
     <h1>Create and View Appointments</h1>
-    <!-- Form for creating a new appointment -->
-    <form id="appointmentForm">
-        <label for="title">Title:</label>
-        <input type="text" id="title" required>
-        <!-- Update the date input to have a default value -->
-        <label for="date">Select Date:</label>
-        <input type="date" id="date" required>
-
-        <!-- Simplify the time slot input -->
-        <label for="timeSlot">Select Time Slot:</label>
-        <input type="text" id="timeSlot" placeholder="HH:mm" required>
-
-        <button type="submit">Add Appointment</button>
-    </form>
-
     <!-- Display the current day -->
     <p id="currentDay"></p>
     
@@ -41,19 +26,34 @@
             <option value="<%= i %>">Week <%= i %></option>
         <% } %>
     </select>
+    <!-- Display search results (optional) -->
+    <div id="searchResults"></div>
 
     <!-- Display available time slots -->
-    <div id="timeSlots">
-        <!-- Loop through time slots and display them vertically -->
-        <% for (let hour = 8; hour < 16; hour++) { %>
-            <% for (let minute = 0; minute < 60; minute += 30) { %>
-                <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
-                <div onclick="selectTime('<%= timeSlotValue %>')" style="display: flex; align-items: center;">
-                    <p style="margin-right: 10px;"><%= timeSlotValue %></p>
+<div id="timeSlots">
+    <!-- Loop through time slots and display them vertically -->
+    <% for (let hour = 8; hour < 16; hour++) { %>
+        <% for (let minute = 0; minute < 60; minute += 30) { %>
+            <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
+            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                <!-- Display the time slot -->
+                <div onclick="selectTime('<%= timeSlotValue %>')" style="margin-right: 10px;">
+                    <p><%= timeSlotValue %></p>
                     <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
                 </div>
-            <% } %>
-        <% } %>                
+
+                <!-- Search input for client phone numbers -->
+                <input type="text" id="<%= `clientSearch-${timeSlotValue.replace(':', '')}` %>" placeholder="Enter phone number">
+                <button onclick="searchClients('<%= timeSlotValue %>')">Search</button>
+            </div>
+        <% } %>
+    <% } %>
+</div>
+
+</div>
+
+</div>
+                
     </div>
 
     <!-- JavaScript for create page -->
@@ -64,18 +64,43 @@
             return date.toLocaleDateString('en-US', options);
         }
 
-        function selectTime(selectedTime) {
+        // Updated function to store selected time and phone number
+function selectTime(selectedTime) {
     const formattedTime = selectedTime.slice(0, 5); // Extract HH:mm from HH:mm:ss
     const timeSlotElement = document.getElementById(`appointment-${formattedTime}`);
 
     if (timeSlotElement) {
-        timeSlotElement.textContent = selectedTime.slice(0, 5); // Set the text content with HH:mm
+        const phoneNumber = document.getElementById('clientSearch').value.trim();
+        timeSlotElement.dataset.phoneNumber = phoneNumber; // Store phone number in data attribute
+
+        // Update the content to show both time and phone number
+        timeSlotElement.textContent = `${formattedTime} - ${phoneNumber}`;
     }
 }
 
+            // Updated function to search clients by phone number for a specific time slot
+function searchClients(selectedTime) {
+    const formattedTime = selectedTime.slice(0, 5);
+    const timeSlotElement = document.getElementById(`appointment-${formattedTime}`);
 
+    if (timeSlotElement) {
+        const searchInput = document.getElementById(`clientSearch-${formattedTime}`);
+        const searchResultsContainer = document.getElementById('searchResults');
+        const phoneNumber = searchInput.value.trim();
 
+        // Perform the search (you can customize this based on your data structure)
+        // For now, let's just display the phone number in the search results container
+        searchResultsContainer.textContent = `Search results: ${phoneNumber}`;
 
+        // Store phone number in data attribute for the specific time slot
+        timeSlotElement.dataset.phoneNumber = phoneNumber;
+
+        // Update the content to show both time and phone number
+        timeSlotElement.innerHTML = `${formattedTime} - ${phoneNumber}`;
+    }
+}
+
+    
         // Function to get the default formatted date as "yyyy-MM-dd"
         function formatDateDefault() {
             const currentDate = new Date();
