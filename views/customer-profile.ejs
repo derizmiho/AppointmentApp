@@ -1,24 +1,23 @@
-<!-- views/customer-profile.ejs -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Profile</title>
-</head>
-<body>
-    <!-- Include the navigation bar -->
-    <%- include('partials/nav.ejs') %>
+<!-- customer-profile.ejs -->
 
-    <h1>Customer Profile</h1>
-    <!-- Display client details -->
-    <% if (clientProfile) { %>
-        <p>First Name: <%= clientProfile.firstname %></p>
-        <p>Last Name: <%= clientProfile.lastname %></p>
-        <p>Phone Number: <%= clientProfile.phone_number %></p>
-        <!-- Add more details as needed -->
-    <% } else { %>
-        <p>Client not found</p>
-    <% } %>
-</body>
-</html>
+<h1>Customer Profile</h1>
+
+<!-- Display client details -->
+<% if (clientAndDogInfo) { %>
+  <h2>Client Information</h2>
+  <p>First Name: <%= clientAndDogInfo.firstname %></p>
+  <p>Last Name: <%= clientAndDogInfo.lastname %></p>
+  <p>Phone Number: <%= clientAndDogInfo.phone_number %></p>
+
+  <!-- Display dog details -->
+  <h2>Dog Information</h2>
+  <% if (clientAndDogInfo.dog_id) { %>
+    <p>Dog Name: <%= clientAndDogInfo.dog_name %></p>
+    <p>Breed: <%= clientAndDogInfo.breed %></p>
+    <!-- Add more dog information fields as needed -->
+  <% } else { %>
+    <p>No dog information available.</p>
+  <% } %>
+<% } else { %>
+  <p>Client not found</p>
+<% } %>

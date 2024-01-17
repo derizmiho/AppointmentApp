@@ -39,33 +39,40 @@ app.get('/create', (req, res) => {
   res.render('create');
 });
 
-// This is a simplified example; adjust according to your actual database setup
-async function fetchClientProfileByPhoneNumber(phoneNumber) {
-  const [rows] = await db.query('SELECT * FROM clients WHERE phone_number = ?', [phoneNumber]);
-  return rows[0]; // Assuming you expect only one result
+async function fetchClientAndDogInfoByPhoneNumber(phoneNumber) {
+  const query = `
+    SELECT clients.*, dogs.*
+    FROM clients
+    LEFT JOIN dogs ON clients.client_id = dogs.client_id
+    WHERE clients.phone_number = ?;
+  `;
+
+  const [result] = await db.query(query, [phoneNumber]);
+  return result[0]; // Assuming you expect only one result
 }
 
 
-// Route handler for /customer-profile
+
 app.get('/customer-profile', async (req, res) => {
   try {
-      const phoneNumber = req.query.phoneNumber;
-      console.log('Phone Number:', phoneNumber); // Add this log statement
+    const phoneNumber = req.query.phoneNumber;
+    console.log('Phone Number:', phoneNumber);
 
-      const clientProfile = await fetchClientProfileByPhoneNumber(phoneNumber);
-      console.log('Client Profile:', clientProfile); // Add this log statement
-      
-      if (clientProfile) {
-          res.render('customer-profile', { clientProfile });
-      } else {
-          console.log('Client not found');
-          res.status(404).send('Client not found');
-      }
+    const clientAndDogInfo = await fetchClientAndDogInfoByPhoneNumber(phoneNumber);
+    console.log('Client and Dog Info:', clientAndDogInfo);
+
+    if (clientAndDogInfo) {
+      res.render('customer-profile', { clientAndDogInfo });
+    } else {
+      console.log('Client not found');
+      res.status(404).send('Client not found');
+    }
   } catch (error) {
-      console.error('Error fetching client profile:', error);
-      res.status(500).send('Internal Server Error');
+    console.error('Error fetching client and dog info:', error);
+    res.status(500).send('Internal Server Error');
   }
 });
+
 
 
 // Getting client profile from phone number search
