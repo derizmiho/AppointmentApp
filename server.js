@@ -12,8 +12,8 @@ app.use(express.json());
 // MySQL connection configuration
 const db = mysql.createPool({
   host: 'localhost',
-  user: 'test_user',
-  password: 'test_password',
+  user: 'root',
+  password: 'Joseph12!',
   database: 'test_database',
   waitForConnections: true,
   connectionLimit: 10,
@@ -39,11 +39,34 @@ app.get('/create', (req, res) => {
   res.render('create');
 });
 
-// Customer profiles page route
-app.get('/customer-profiles', (req, res) => {
-  // Render the 'customer-profile' template
-  res.render('customer-profiles');
+// This is a simplified example; adjust according to your actual database setup
+async function fetchClientProfileByPhoneNumber(phoneNumber) {
+  const [rows] = await db.query('SELECT * FROM clients WHERE phone_number = ?', [phoneNumber]);
+  return rows[0]; // Assuming you expect only one result
+}
+
+
+// Route handler for /customer-profile
+app.get('/customer-profile', async (req, res) => {
+  try {
+      const phoneNumber = req.query.phoneNumber;
+      console.log('Phone Number:', phoneNumber); // Add this log statement
+
+      const clientProfile = await fetchClientProfileByPhoneNumber(phoneNumber);
+      console.log('Client Profile:', clientProfile); // Add this log statement
+      
+      if (clientProfile) {
+          res.render('customer-profile', { clientProfile });
+      } else {
+          console.log('Client not found');
+          res.status(404).send('Client not found');
+      }
+  } catch (error) {
+      console.error('Error fetching client profile:', error);
+      res.status(500).send('Internal Server Error');
+  }
 });
+
 
 // Getting client profile from phone number search
 app.get('/get-client-profile', async (req, res) => {

@@ -60,7 +60,7 @@ document.addEventListener('input', function (event) {
 
     if (targetId && targetId.startsWith('clientSearch-')) {
         event.preventDefault();
-        formatPhoneNumber(event.target);
+        formatPhoneNumber(event.target, event);
     }
 });
 
@@ -112,12 +112,6 @@ function formatPhoneNumber(input, event) {
         }
     }
 
-    // Function to clear an appointment title
-    function clearAppointmentTitle(element) {
-        if (element) {
-            element.textContent = '';
-        }
-    }
         // Function to clear an appointment title
         function clearAppointmentTitle(element) {
             if (element) {
@@ -259,14 +253,16 @@ async function searchClients(searchButton) {
         if (clientProfile.error) {
             searchResultsContainer.textContent = `Client not found for phone number: ${phoneNumber}`;
         } else {
-            // Display client information in the search results container (customize as needed)
-            searchResultsContainer.textContent = `Client Found: ${clientProfile.firstname} ${clientProfile.lastname}`;
+            // Redirect to the customer-profile route with the obtained phone number
+            window.location.href = `/customer-profile?phoneNumber=${phoneNumber}`;
         }
     } catch (error) {
         console.error('Error searching for client:', error);
         searchResultsContainer.textContent = 'Error searching for client. Please try again.';
     }
 }
+
+
 
 
 
