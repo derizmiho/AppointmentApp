@@ -45,8 +45,8 @@
                         <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
                     </div>
                     <!-- Search input for client phone numbers -->
-                    <input type="text" id="<%= `clientSearch-${timeSlotValue.replace(':', '')}` %>" placeholder="Enter phone number">
-                    <button onclick="searchClients('<%= timeSlotValue %>')">Search</button>
+                    <input type="text" id="<%= `clientSearch-${timeSlotValue.replace(':', '')}` %>" class="search-input" placeholder="Enter phone number">
+                    <button onclick="searchClients(this)">Search</button>
                 </div>
             <% } %>
         <% } %>
@@ -222,33 +222,54 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-        // Function to search clients by phone number for a specific time slot
-function searchClients(selectedTime) {
-    const formattedTime = selectedTime.slice(0, 5);
+// Function to search clients by phone number for a specific time slot
+async function searchClients(searchButton) {
+    console.log('Search button clicked');
+
+    // Get the parent div containing the time slot and search input
+    const parentDiv = searchButton.parentElement;
+
+    if (!parentDiv) {
+        console.error('Parent container not found.');
+        return;
+    }
+
+    // Get the formatted time from the time slot
+    const formattedTime = parentDiv.getAttribute('data-timeslot');
     const timeSlotElement = document.getElementById(`appointment-${formattedTime}`);
+    const searchInput = parentDiv.querySelector('.search-input');
+    const searchResultsContainer = document.getElementById('searchResults');
 
-    if (timeSlotElement) {
-        const searchInput = document.getElementById(`clientSearch-${formattedTime}`);
-        const searchResultsContainer = document.getElementById('searchResults');
-        let phoneNumber = searchInput.value.trim();
+    // Check if searchInput is null
+    if (!searchInput) {
+        console.error('Search input element not found.');
+        return;
+    }
 
-        // Format the phone number with ( ) and hyphen
-        phoneNumber = phoneNumber.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+    // Get the formatted phone number
+    let phoneNumber = searchInput.value.trim();
+    phoneNumber = phoneNumber.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
 
-        // Perform the search (customize based on your data structure)
-        // For now, let's just display the formatted phone number in the search results container
-        searchResultsContainer.textContent = `Search results: ${phoneNumber}`;
+    // Perform the search by making a request to the server
+    try {
+        const response = await fetch(`/get-client-profile?phoneNumber=${phoneNumber}`);
+        const clientProfile = await response.json();
 
-        // Update the value of the search input with the formatted phone number
-        searchInput.value = phoneNumber;
-
-        // Store phone number in data attribute for the specific time slot
-        timeSlotElement.dataset.phoneNumber = phoneNumber;
-
-        // Update the content to show both time and formatted phone number
-        timeSlotElement.innerHTML = `${formattedTime} - ${phoneNumber}`;
+        // Check if a client was found
+        if (clientProfile.error) {
+            searchResultsContainer.textContent = `Client not found for phone number: ${phoneNumber}`;
+        } else {
+            // Display client information in the search results container (customize as needed)
+            searchResultsContainer.textContent = `Client Found: ${clientProfile.firstname} ${clientProfile.lastname}`;
+        }
+    } catch (error) {
+        console.error('Error searching for client:', error);
+        searchResultsContainer.textContent = 'Error searching for client. Please try again.';
     }
 }
+
+
+
 // Function to adjust the current date based on the real-life current day and fetch appointments
 function loadAppointmentsForWeek() {
     // Get the selected week value from the dropdown
@@ -308,6 +329,7 @@ function switchDay(offset) {
         fetchAndDisplayAppointments();
     }
 }
+
     </script>
 </body>
 </html>
