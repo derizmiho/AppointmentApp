@@ -249,6 +249,33 @@ function searchClients(selectedTime) {
         timeSlotElement.innerHTML = `${formattedTime} - ${phoneNumber}`;
     }
 }
+// Function to adjust the current date based on the real-life current day and fetch appointments
+function loadAppointmentsForWeek() {
+    // Get the selected week value from the dropdown
+    const selectedWeek = parseInt(document.getElementById('weekSelect').value);
+
+    // Get the current date input element
+    const currentDateInput = document.getElementById('date');
+
+    // Get the current date from the input element
+    const currentDate = new Date();
+
+    // Calculate the difference in days between the current week and the selected week
+    const daysToAdd = (selectedWeek - 1) * 7;
+
+    // Adjust the current date by adding the calculated days
+    const newDate = new Date(currentDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+
+    // Update the input value with the new date
+    currentDateInput.value = formatDateDefault(newDate);
+
+    // Display the updated current date
+    displayCurrentDay(newDate);
+
+    // Fetch and display appointments for the new date
+    fetchAndDisplayAppointments();
+}
+
 // Function to format the date as YYYY-MM-DD for server communication
 function formatDateForServer(date) {
     const year = date.getFullYear();
