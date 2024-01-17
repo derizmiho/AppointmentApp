@@ -53,6 +53,51 @@ app.get('/test-query', async (req, res) => {
       res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
+// getting client profile from phone number search
+app.get('/get-client-profile', async (req, res) => {
+  try {
+      const { phoneNumber } = req.query;
+      const query = 'SELECT * FROM clients WHERE phone_number = ?';
+      const [client] = await db.query(query, [phoneNumber]);
+
+      if (client.length > 0) {
+          res.json(client[0]);
+      } else {
+          res.status(404).json({ error: 'Client not found' });
+      }
+  } catch (error) {
+      console.error('Error fetching client profile:', error);
+      res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+});
+// update the appointment information
+app.post('/edit-appointment/:id', async (req, res) => {
+  const appointmentId = req.params.id;
+  const { date, phoneNumber } = req.body;
+
+  try {
+      // Update the appointment date in the database
+      const updateQuery = 'UPDATE appointments SET date = ? WHERE id = ?';
+      await db.query(updateQuery, [date, appointmentId]);
+
+      // Fetch the updated appointment data
+      const fetchQuery = 'SELECT * FROM appointments WHERE id = ?';
+      const [fetchResult] = await db.query(fetchQuery, [appointmentId]);
+
+      const updatedAppointment = fetchResult[0];
+
+      // Update client information if a phone number is provided
+      if (phoneNumber) {
+          const updateClientQuery = 'UPDATE clients SET appointment_id = ? WHERE phone_number = ?';
+          await db.query(updateClientQuery, [appointmentId, phoneNumber]);
+      }
+
+      res.json({ updatedAppointment });
+  } catch (error) {
+      console.error('Error updating appointment:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 // Fetch all appointments from the database
 app.post('/create', async (req, res) => {

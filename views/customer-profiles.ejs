@@ -31,7 +31,77 @@
                         document.getElementById('customerProfilesList').appendChild(listItem);
                     });
                 });
+                function fetchAndDisplayAppointments() {
+            const selectedDate = document.getElementById('date').value;
+
+            console.log('Fetching Appointments for Date:', selectedDate);
+
+            // Send GET request to load appointments for the selected date
+            fetch(`/load-appointments?date=${selectedDate}`)
+                .then(response => response.json())
+                .then(appointments => {
+                    console.log('Fetched Appointments:', appointments);
+
+                    // Clear all appointment titles from time slots
+                    clearAllAppointmentTitles();
+
+                    // Display the appointments on the page
+                    appointments.forEach(appointment => {
+                        const timeSlotId = `appointment-${appointment.time_slot.replace(':', '')}`;
+                        const timeSlotElement = document.getElementById(timeSlotId);
+
+                        // Add the appointment to the time slot
+                        if (timeSlotElement) {
+                            // Create a new div for the time slot and appointment with inline styles
+                            const containerDiv = document.createElement('div');
+                            containerDiv.style.display = 'flex';
+                            containerDiv.style.alignItems = 'center';
+
+                            // Create a div for the time slot
+                            const timeSlotDiv = document.createElement('div');
+                            timeSlotDiv.textContent = timeSlotElement.textContent;
+
+                            // Create a div for the appointment title
+                            const appointmentDiv = document.createElement('div');
+                            appointmentDiv.textContent = appointment.title;
+                            appointmentDiv.style.marginLeft = '10px'; // Adjust the margin as needed
+
+                            // Append both divs to the container
+                            containerDiv.appendChild(timeSlotDiv);
+                            containerDiv.appendChild(appointmentDiv);
+
+                            // Replace the content of the time slot element with the container
+                            timeSlotElement.innerHTML = '';
+                            timeSlotElement.appendChild(containerDiv);
+                        }
+
+                        console.log('Updating time slot:', timeSlotId);
+                        console.log('Time slot element:', timeSlotElement);
+                    });
+                })
+                .catch(error => console.error('Error loading appointments:', error));
+        }
+                     // Update the form submission to use the correct date format
+        document.getElementById('appointmentForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            // Gather form data
+            const title = document.getElementById('title').value;
+            const dateInput = document.getElementById('date');
+            const date = formatDateForServer(dateInput.value);
+            const timeSlot = document.getElementById('timeSlot').value;
+
+            console.log('Form Data:', { title, date, timeSlot }); // Log the form data
+
+            try {
+                // Fetch and display appointments for the new date
+                await fetchAndDisplayAppointments();
+            } catch (error) {
+                console.error('Error fetching and displaying appointments:', error);
+            }
         });
+        });
+        
     </script>
 </body>
 </html>
