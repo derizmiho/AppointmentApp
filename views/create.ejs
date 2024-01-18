@@ -4,21 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create and View Appointments</title>
+    <style>
+        /* Add your CSS styles here if needed */
+    </style>
 </head>
 <body>
     <!-- Include the navigation bar -->
     <%- include('partials/nav.ejs') %>
     
     <h1>Create and View Appointments</h1>
+
     <!-- Display the current day -->
     <div id="currentDay"></div>
+
     <!-- Display the current day -->
     <input type="date" id="date">
 
     <!-- Buttons to switch the day of the week within the next 7 days -->
-    <div style="margin-top: 10px; margin-bottom: 20px;">
+    <div class="button-group">
         <button onclick="switchDay(-1)">Previous Day</button>
         <button onclick="switchDay(1)">Next Day</button>
+    </div>
+
+    <!-- Display search input for client phone numbers above Next Day buttons -->
+    <div class="search-container">
+        <label for="clientPhoneNumber">Enter Client Phone Number:</label>
+        <input type="text" id="clientPhoneNumber" class="search-input" placeholder="Enter phone number" oninput="formatPhoneNumber(this)">
+        <button onclick="searchClients()">Search</button>
     </div>
 
     <!-- Dropdown to select weeks 1-12 -->
@@ -38,15 +50,9 @@
         <% for (let hour = 8; hour < 16; hour++) { %>
             <% for (let minute = 0; minute < 60; minute += 30) { %>
                 <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
-                <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                    <!-- Display the time slot -->
-                    <div onclick="selectTime('<%= timeSlotValue %>')" style="margin-right: 10px;">
-                        <p><%= timeSlotValue %></p>
-                        <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
-                    </div>
-                    <!-- Search input for client phone numbers -->
-                    <input type="text" id="<%= `clientSearch-${timeSlotValue.replace(':', '')}` %>" class="search-input" placeholder="Enter phone number">
-                    <button onclick="searchClients(this)">Search</button>
+                <div class="time-slot" onclick="selectTime('<%= timeSlotValue %>')">
+                    <p><%= timeSlotValue %></p>
+                    <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
                 </div>
             <% } %>
         <% } %>
@@ -54,79 +60,63 @@
 
     <!-- JavaScript for create page -->
     <script>
-          // Add event listener to format phone number while typing
-document.addEventListener('input', function (event) {
-    const targetId = event.target.id;
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set the default value for the date input after the page has loaded
+            const currentDateInput = document.getElementById('date');
+            const currentDate = new Date();
+            currentDateInput.value = formatDateDefault(currentDate);
 
-    if (targetId && targetId.startsWith('clientSearch-')) {
-        event.preventDefault();
-        formatPhoneNumber(event.target, event);
-    }
-});
+            // Display the current day
+            displayCurrentDay(currentDate);
 
-       // Function to format the phone number as 444-444-4444 while typing
-function formatPhoneNumber(input, event) {
-    // Get the current cursor position
-    const cursorPosition = input.selectionStart;
+            // Load existing appointments on page load
+            fetchAndDisplayAppointments();
+        });
 
-    // Remove non-numeric characters from the input
-    const numericValue = input.value.replace(/\D/g, '');
+        // Add event listener to format phone number while typing
+        function formatPhoneNumber(input) {
+            const cursorPosition = input.selectionStart;
+            const numericValue = input.value.replace(/\D/g, '');
+            const limitedNumericValue = numericValue.slice(0, 10);
 
-    // Limit the numeric value to 10 characters
-    const limitedNumericValue = numericValue.slice(0, 10);
+            let formattedNumber = '';
+            let formattedCursorPosition = cursorPosition;
 
-    // Format the numeric value as 444-444-4444
-    let formattedNumber = '';
-    let formattedCursorPosition = cursorPosition;
-
-    for (let i = 0; i < limitedNumericValue.length; i++) {
-        if (i === 3 || i === 6) {
-            formattedNumber += '-';
-            // Adjust the cursor position when a hyphen is added
-            if (cursorPosition > i) {
-                formattedCursorPosition++;
+            for (let i = 0; i < limitedNumericValue.length; i++) {
+                if (i === 3 || i === 6) {
+                    formattedNumber += '-';
+                    if (cursorPosition > i) {
+                        formattedCursorPosition++;
+                    }
+                }
+                formattedNumber += limitedNumericValue[i];
             }
+
+            input.value = formattedNumber;
+            input.setSelectionRange(formattedCursorPosition, formattedCursorPosition);
         }
-        formattedNumber += limitedNumericValue[i];
-    }
 
-    // Update the input value with the formatted number
-    input.value = formattedNumber;
+        // Rest of your JavaScript code...
 
-    // Set the new cursor position after formatting
-    input.setSelectionRange(formattedCursorPosition, formattedCursorPosition);
+// Function to clear all appointment titles from time slots
+function clearAllAppointments() {
+    const allTimeSlots = document.getElementById('timeSlots').children;
 
-    // Prevent the default behavior of the keydown event
-    if (event && event.preventDefault) {
-        event.preventDefault();
+    for (const timeSlot of allTimeSlots) {
+        const timeSlotElement = timeSlot.children[1];
+        clearAppointmentTitle(timeSlotElement);
     }
 }
 
-    // Function to clear all appointment titles from time slots
-    function clearAllAppointments() {
-        const allTimeSlots = document.getElementById('timeSlots').children;
-
-        for (const timeSlot of allTimeSlots) {
-            const timeSlotElement = timeSlot.children[1];
-            clearAppointmentTitle(timeSlotElement);
-        }
+// Function to clear an appointment title
+function clearAppointmentTitle(element) {
+    if (element) {
+        element.textContent = '';
     }
+}
 
-        // Function to clear an appointment title
-        function clearAppointmentTitle(element) {
-            if (element) {
-                element.textContent = '';
-            }
-        }
-
-        // Function to format the date as YYYY-MM-DD
-        function formatDate(date) {
-            const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
-            return date.toLocaleDateString('en-US', options);
-        }
-
-        // Function to fetch and display appointments
-        async function fetchAndDisplayAppointments() {
+// Function to fetch and display appointments
+async function fetchAndDisplayAppointments() {
     const selectedDate = document.getElementById('date').value;
 
     console.log('Fetching Appointments for Date:', selectedDate);
@@ -184,16 +174,6 @@ function formatPhoneNumber(input, event) {
     }
 }
 
-        
-        // Function to get the default formatted date as "yyyy-MM-dd"
-function formatDateDefault(date) {
-    const currentDate = date || new Date();
-    const year = currentDate.getUTCFullYear();
-    const month = (currentDate.getUTCMonth() + 1).toString().padStart(2, '0');
-    const day = currentDate.getUTCDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
 // Function to display the current day
 function displayCurrentDay(date) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -201,37 +181,12 @@ function displayCurrentDay(date) {
     document.getElementById('currentDay').textContent = `Current Day: ${formattedDate}`;
 }
 
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Set the default value for the date input after the page has loaded
-    const currentDateInput = document.getElementById('date');
-    const currentDate = new Date(); // Get the current date
-    currentDateInput.value = formatDateDefault(currentDate); // Set the default value in the required format
-
-    // Display the current day
-    displayCurrentDay(currentDate);
-
-    // Load existing appointments on page load
-    fetchAndDisplayAppointments();
-});
-
-
 // Function to search clients by phone number for a specific time slot
-async function searchClients(searchButton) {
+async function searchClients() {
     console.log('Search button clicked');
 
-    // Get the parent div containing the time slot and search input
-    const parentDiv = searchButton.parentElement;
-
-    if (!parentDiv) {
-        console.error('Parent container not found.');
-        return;
-    }
-
-    // Get the formatted time from the time slot
-    const formattedTime = parentDiv.getAttribute('data-timeslot');
-    const timeSlotElement = document.getElementById(`appointment-${formattedTime}`);
-    const searchInput = parentDiv.querySelector('.search-input');
+    // Get the search input element
+    const searchInput = document.getElementById('clientPhoneNumber');
     const searchResultsContainer = document.getElementById('searchResults');
 
     // Check if searchInput is null
@@ -261,10 +216,6 @@ async function searchClients(searchButton) {
         searchResultsContainer.textContent = 'Error searching for client. Please try again.';
     }
 }
-
-
-
-
 
 // Function to adjust the current date based on the real-life current day and fetch appointments
 function loadAppointmentsForWeek() {
@@ -300,6 +251,7 @@ function formatDateForServer(date) {
     const day = date.getDate().toString().padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
+
 // Function to get the default formatted date as "yyyy-MM-dd"
 function formatDateDefault(date) {
     const currentDate = date || new Date();
@@ -309,6 +261,7 @@ function formatDateDefault(date) {
     return `${year}-${month}-${day}`;
 }
 
+// Function to switch the day based on the offset
 function switchDay(offset) {
     const currentDateInput = document.getElementById('date');
     const currentDate = new Date(currentDateInput.value);
@@ -325,7 +278,7 @@ function switchDay(offset) {
         fetchAndDisplayAppointments();
     }
 }
-
-    </script>
+</script>
 </body>
 </html>
+
