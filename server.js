@@ -79,7 +79,12 @@ app.get('/customer-profile', async (req, res) => {
 app.get('/get-client-profile', async (req, res) => {
   try {
     const { phoneNumber } = req.query;
-    const query = 'SELECT * FROM clients WHERE phone_number = ?';
+    const query = `
+      SELECT c.*, d.dog_id, d.dog_name, d.breed
+      FROM clients c
+      LEFT JOIN dogs d ON c.client_id = d.client_id
+      WHERE c.phone_number = ?
+    `;
     const [client] = await db.query(query, [phoneNumber]);
 
     if (client.length > 0) {

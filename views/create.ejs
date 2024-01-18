@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create and View Appointments</title>
-    <style>
-        /* Add your CSS styles here if needed */
-    </style>
+    <!-- Add your CSS styles here if needed -->
 </head>
 <body>
     <!-- Include the navigation bar -->
@@ -31,6 +29,11 @@
         <label for="clientPhoneNumber">Enter Client Phone Number:</label>
         <input type="text" id="clientPhoneNumber" class="search-input" placeholder="Enter phone number" oninput="formatPhoneNumber(this)">
         <button onclick="searchClients()">Search</button>
+    </div>
+
+    <!-- Display client details -->
+    <div id="clientDetails">
+        <!-- Client details will be displayed here -->
     </div>
 
     <!-- Dropdown to select weeks 1-12 -->
@@ -58,8 +61,10 @@
         <% } %>
     </div>
 
+    
     <!-- JavaScript for create page -->
     <script>
+        let clientAndDogInfo;
         document.addEventListener('DOMContentLoaded', () => {
             // Set the default value for the date input after the page has loaded
             const currentDateInput = document.getElementById('date');
@@ -96,26 +101,48 @@
             input.setSelectionRange(formattedCursorPosition, formattedCursorPosition);
         }
 
-        // Rest of your JavaScript code...
-
-// Function to clear all appointment titles from time slots
-function clearAllAppointments() {
-    const allTimeSlots = document.getElementById('timeSlots').children;
-
-    for (const timeSlot of allTimeSlots) {
-        const timeSlotElement = timeSlot.children[1];
-        clearAppointmentTitle(timeSlotElement);
-    }
+        // Function to format the date as YYYY-MM-DD for server communication
+function formatDateForServer(date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
-// Function to clear an appointment title
-function clearAppointmentTitle(element) {
-    if (element) {
-        element.textContent = '';
-    }
+// Function to get the default formatted date as "yyyy-MM-dd"
+function formatDateDefault(date) {
+    const currentDate = date || new Date();
+    const year = currentDate.getFullYear();
+    const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = currentDate.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
-// Function to fetch and display appointments
+
+        // Function to clear all appointment titles from time slots
+        function clearAllAppointments() {
+            const allTimeSlots = document.getElementById('timeSlots').children;
+
+            for (const timeSlot of allTimeSlots) {
+                const timeSlotElement = timeSlot.children[1];
+                clearAppointmentTitle(timeSlotElement);
+            }
+        }
+
+        // Function to clear an appointment title
+        function clearAppointmentTitle(element) {
+            if (element) {
+                element.textContent = '';
+            }
+        }
+         // Function to display the current day
+         function displayCurrentDay(date) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const formattedDate = date.toLocaleDateString('en-US', options);
+            document.getElementById('currentDay').textContent = `Current Day: ${formattedDate}`;
+        }
+
+        // Function to fetch and display appointments
 async function fetchAndDisplayAppointments() {
     const selectedDate = document.getElementById('date').value;
 
@@ -141,23 +168,6 @@ async function fetchAndDisplayAppointments() {
 
             // Add the appointment to the time slot
             if (timeSlotElement) {
-                // Create a new div for the time slot and appointment with inline styles
-                const containerDiv = document.createElement('div');
-                containerDiv.style.display = 'flex';
-                containerDiv.style.alignItems = 'center';
-
-                // Create a div for the time slot
-                const timeSlotDiv = document.createElement('div');
-                timeSlotDiv.textContent = timeSlotElement.textContent;
-
-                // Create a div for the appointment title
-                const appointmentDiv = document.createElement('div');
-                appointmentDiv.textContent = appointment.title;
-                appointmentDiv.style.marginLeft = '10px'; // Adjust the margin as needed
-
-                // Append both divs to the container
-                containerDiv.appendChild(timeSlotDiv);
-                containerDiv.appendChild(appointmentDiv);
 
                 // Replace the content of the time slot element with the container
                 timeSlotElement.innerHTML = '';
@@ -169,16 +179,14 @@ async function fetchAndDisplayAppointments() {
 
         console.log('All time slots processed.');
 
+        // If client details are available, display them
+        if (clientAndDogInfo) {
+            displayClientDetails();
+        }
+
     } catch (error) {
         console.error('Error loading appointments:', error);
     }
-}
-
-// Function to display the current day
-function displayCurrentDay(date) {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const formattedDate = date.toLocaleDateString('en-US', options);
-    document.getElementById('currentDay').textContent = `Current Day: ${formattedDate}`;
 }
 
 // Function to search clients by phone number for a specific time slot
@@ -204,12 +212,17 @@ async function searchClients() {
         const response = await fetch(`/get-client-profile?phoneNumber=${phoneNumber}`);
         const clientProfile = await response.json();
 
+        console.log('Server Response (clientProfile):', clientProfile);
+
+
         // Check if a client was found
-        if (clientProfile.error) {
-            searchResultsContainer.textContent = `Client not found for phone number: ${phoneNumber}`;
+        if (!clientProfile.error) {
+            // Update the clientAndDogInfo object
+            clientAndDogInfo = clientProfile;
+            // Display client details on the page
+            displayClientDetails();
         } else {
-            // Redirect to the customer-profile route with the obtained phone number
-            window.location.href = `/customer-profile?phoneNumber=${phoneNumber}`;
+            searchResultsContainer.textContent = `Client not found for phone number: ${phoneNumber}`;
         }
     } catch (error) {
         console.error('Error searching for client:', error);
@@ -217,68 +230,61 @@ async function searchClients() {
     }
 }
 
-// Function to adjust the current date based on the real-life current day and fetch appointments
-function loadAppointmentsForWeek() {
-    // Get the selected week value from the dropdown
-    const selectedWeek = parseInt(document.getElementById('weekSelect').value);
 
-    // Get the current date input element
-    const currentDateInput = document.getElementById('date');
+        // Function to display client details
+        function displayClientDetails() {
+            // Display client details on the page
+            const clientDetailsContainer = document.getElementById('clientDetails');
+            clientDetailsContainer.innerHTML = '';
 
-    // Get the current date from the input element
-    const currentDate = new Date();
+            // Check if clientAndDogInfo is defined
+            if (typeof clientAndDogInfo !== 'undefined' && clientAndDogInfo !== null) {
+                // Display client details
+                const clientDetails = document.createElement('div');
+                clientDetails.innerHTML = `
+                    <h2>Client Information</h2>
+                    <p>First Name: ${clientAndDogInfo.firstname}</p>
+                    <p>Last Name: ${clientAndDogInfo.lastname}</p>
+                    <p>Phone Number: ${clientAndDogInfo.phone_number}</p>
+                `;
 
-    // Calculate the difference in days between the current week and the selected week
-    const daysToAdd = (selectedWeek - 1) * 7;
+                // Display dog details if available
+                if (clientAndDogInfo.dog_id) {
+                    console.log('Dog Name:', clientAndDogInfo.dog_name);
+            console.log('Breed:', clientAndDogInfo.breed);
+                    clientDetails.innerHTML += `
+                        <h2>Dog Information</h2>
+                        <p>Dog Name: ${clientAndDogInfo.dog_name}</p>
+                        <p>Breed: ${clientAndDogInfo.breed}</p>
+                        <!-- Add more dog information fields as needed -->
+                    `;
+                } else {
+                    clientDetails.innerHTML += `<p>No dog information available.</p>`;
+                }
 
-    // Adjust the current date by adding the calculated days
-    const newDate = new Date(currentDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-
-    // Update the input value with the new date
-    currentDateInput.value = formatDateDefault(newDate);
-
-    // Display the updated current date
-    displayCurrentDay(newDate);
-
-    // Fetch and display appointments for the new date
-    fetchAndDisplayAppointments();
-}
-
-// Function to format the date as YYYY-MM-DD for server communication
-function formatDateForServer(date) {
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-// Function to get the default formatted date as "yyyy-MM-dd"
-function formatDateDefault(date) {
-    const currentDate = date || new Date();
-    const year = currentDate.getFullYear();
-    const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = currentDate.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-// Function to switch the day based on the offset
-function switchDay(offset) {
-    const currentDateInput = document.getElementById('date');
-    const currentDate = new Date(currentDateInput.value);
-
-    if (!isNaN(currentDate.getTime())) {
-        // Adjust for the local time zone offset
-        const localOffset = currentDate.getTimezoneOffset() * 60 * 1000;
-        
-        // Calculate the new date based on the offset
-        const newDate = new Date(currentDate.getTime() + offset * 24 * 60 * 60 * 1000 + localOffset);
-
-        currentDateInput.value = formatDateDefault(newDate);
-        displayCurrentDay(newDate);
-        fetchAndDisplayAppointments();
+                clientDetailsContainer.appendChild(clientDetails);
+            }else {
+        console.error('Invalid clientAndDogInfo structure:', clientAndDogInfo);
     }
-}
-</script>
+        }
+
+        // Function to switch the day based on the offset
+        function switchDay(offset) {
+            const currentDateInput = document.getElementById('date');
+            const currentDate = new Date(currentDateInput.value);
+
+            if (!isNaN(currentDate.getTime())) {
+                // Adjust for the local time zone offset
+                const localOffset = currentDate.getTimezoneOffset() * 60 * 1000;
+                
+                // Calculate the new date based on the offset
+                const newDate = new Date(currentDate.getTime() + offset * 24 * 60 * 60 * 1000 + localOffset);
+
+                currentDateInput.value = formatDateDefault(newDate);
+                displayCurrentDay(newDate);
+                fetchAndDisplayAppointments();
+            }
+        }
+    </script>
 </body>
 </html>
-
