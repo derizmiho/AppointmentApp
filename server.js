@@ -75,7 +75,6 @@ app.get('/customer-profile', async (req, res) => {
 
 
 
-// Getting client profile from phone number search
 app.get('/get-client-profile', async (req, res) => {
   try {
     const { phoneNumber } = req.query;
@@ -85,10 +84,29 @@ app.get('/get-client-profile', async (req, res) => {
       LEFT JOIN dogs d ON c.client_id = d.client_id
       WHERE c.phone_number = ?
     `;
-    const [client] = await db.query(query, [phoneNumber]);
+    const [clientAndDogs] = await db.query(query, [phoneNumber]);
+    console.log('Query Result:', clientAndDogs);
 
-    if (client.length > 0) {
-      res.json(client[0]);
+    if (clientAndDogs.length > 0) {
+      console.log('Client and Dogs:', clientAndDogs);
+
+      // Extract client details
+      const clientDetails = {
+        client_id: clientAndDogs[0].client_id,
+        lastname: clientAndDogs[0].lastname,
+        firstname: clientAndDogs[0].firstname,
+        phone_number: clientAndDogs[0].phone_number,
+      };
+
+      // Extract dogs array
+      const dogsArray = clientAndDogs.map(dog => ({
+        dog_id: dog.dog_id,
+        dog_name: dog.dog_name,
+        breed: dog.breed,
+      }));
+      console.log('Number of Dogs:', dogsArray.length);
+
+      res.json({ ...clientDetails, dogs: dogsArray });
     } else {
       res.status(404).json({ error: 'Client not found' });
     }
@@ -97,6 +115,7 @@ app.get('/get-client-profile', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
+
 
 // Update the appointment information
 app.post('/edit-appointment/:id', async (req, res) => {
