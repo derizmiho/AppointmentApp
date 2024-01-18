@@ -71,6 +71,13 @@
             const currentDate = new Date();
             currentDateInput.value = formatDateDefault(currentDate);
 
+            
+    // Add event listener for date change
+    currentDateInput.addEventListener('change', () => {
+        // Reload appointments when the date changes
+        fetchAndDisplayAppointments();
+    });
+            
             // Display the current day
             displayCurrentDay(currentDate);
 
@@ -119,6 +126,13 @@ function formatDateDefault(date) {
 }
 
 
+        // Function to clear an appointment title
+        function clearAppointmentTitle(element) {
+            if (element) {
+                element.textContent = '';
+            }
+        }
+        
         // Function to clear all appointment titles from time slots
         function clearAllAppointments() {
             const allTimeSlots = document.getElementById('timeSlots').children;
@@ -129,12 +143,6 @@ function formatDateDefault(date) {
             }
         }
 
-        // Function to clear an appointment title
-        function clearAppointmentTitle(element) {
-            if (element) {
-                element.textContent = '';
-            }
-        }
          // Function to display the current day
          function displayCurrentDay(date) {
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
