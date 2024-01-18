@@ -168,6 +168,23 @@ async function fetchAndDisplayAppointments() {
 
             // Add the appointment to the time slot
             if (timeSlotElement) {
+                // Create a new div for the time slot and appointment with inline styles
+                const containerDiv = document.createElement('div');
+                containerDiv.style.display = 'flex';
+                containerDiv.style.alignItems = 'center';
+
+                // Create a div for the time slot
+                const timeSlotDiv = document.createElement('div');
+                timeSlotDiv.textContent = timeSlotElement.textContent;
+
+                // Create a div for the appointment title
+                const appointmentDiv = document.createElement('div');
+                appointmentDiv.textContent = appointment.title;
+                appointmentDiv.style.marginLeft = '10px'; // Adjust the margin as needed
+
+                // Append both divs to the container
+                containerDiv.appendChild(timeSlotDiv);
+                containerDiv.appendChild(appointmentDiv);
 
                 // Replace the content of the time slot element with the container
                 timeSlotElement.innerHTML = '';
@@ -267,6 +284,33 @@ async function searchClients() {
         console.error('Invalid clientAndDogInfo structure:', clientAndDogInfo);
     }
         }
+
+        // Function to load appointments for the selected week
+function loadAppointmentsForWeek() {
+    // Get the selected week value from the dropdown
+    const selectedWeek = parseInt(document.getElementById('weekSelect').value);
+
+    // Get the current date input element
+    const currentDateInput = document.getElementById('date');
+
+    // Get the current date from the input element
+    const currentDate = new Date();
+
+    // Calculate the difference in days between the current week and the selected week
+    const daysToAdd = (selectedWeek - 1) * 7;
+
+    // Adjust the current date by adding the calculated days
+    const newDate = new Date(currentDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+
+    // Update the input value with the new date
+    currentDateInput.value = formatDateDefault(newDate);
+
+    // Display the updated current date
+    displayCurrentDay(newDate);
+
+    // Fetch and display appointments for the new date
+    fetchAndDisplayAppointments();
+}
 
         // Function to switch the day based on the offset
         function switchDay(offset) {
