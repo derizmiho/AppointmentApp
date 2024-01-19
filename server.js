@@ -148,7 +148,7 @@ app.post('/edit-appointment/:id', async (req, res) => {
 });
 async function insertAppointmentIntoDatabase(appointmentData) {
   try {
-    const { client_id, dog_id, time_slot } = appointmentData;
+    const { client_id, dog_id, time_slot, date } = appointmentData;
 
     // Fetch client and dog information to construct the title
     const [clientInfo] = await db.query('SELECT firstname, lastname FROM clients WHERE client_id = ?', [client_id]);
@@ -159,12 +159,12 @@ async function insertAppointmentIntoDatabase(appointmentData) {
 
     // Your MySQL query to insert the appointment into the database with the title
     const insertQuery = `
-      INSERT INTO appointments (client_id, dog_id, time_slot, title)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO appointments (client_id, dog_id, time_slot, date, title)
+      VALUES (?, ?, ?, ?, ?)
     `;
 
     // Execute the query with the provided data
-    const [result] = await db.query(insertQuery, [client_id, dog_id, time_slot, title]);
+    const [result] = await db.query(insertQuery, [client_id, dog_id, time_slot, date, title]);
 
     // Assuming the insertion is successful
     if (result.affectedRows === 1) {
@@ -189,23 +189,17 @@ app.post('/create-appointment', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid appointment data' });
     }
 
-    // Fetch client and dog information
-    const clientAndDogInfo = await fetchClientAndDogInfoByIds(appointmentData.client_id, appointmentData.dog_id);
-
-    if (clientAndDogInfo) {
-      // Set the title based on the fetched information
-      appointmentData.title = `${clientAndDogInfo.lastname} ${clientAndDogInfo.firstname} - ${clientAndDogInfo.dog_name}`;
-    } else {
-      return res.status(404).json({ success: false, message: 'Client or dog not found' });
-    }
+    // Set the appointment date based on the user's input or the current selected day
+    appointmentData.date = req.body.date;
 
     // Insert the appointment into the database
+    console.log('Before inserting appointment into the database')
     const insertResult = await insertAppointmentIntoDatabase(appointmentData);
+    console.log('After inserting appointment into the database');
+    console.log('Incoming Appointment Data:', appointmentData);
 
     if (insertResult.success) {
-      // Fetch the newly inserted appointment with the title
-      const [newAppointment] = await db.query('SELECT * FROM appointments WHERE appointment_id = ?', [insertResult.insertId]);
-      res.json({ success: true, message: 'Appointment created successfully', appointment: newAppointment[0] });
+      res.json({ success: true, message: 'Appointment created successfully' });
     } else {
       res.status(500).json({ success: false, message: 'Error creating appointment', error: insertResult.message });
     }
@@ -214,6 +208,7 @@ app.post('/create-appointment', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal Server Error', error: error.message });
   }
 });
+
 
 
 
@@ -239,52 +234,6 @@ function isValidAppointmentData(appointmentData) {
   return true;
 }
 
-// Fetch all appointments from the database
-app.post('/create', async (req, res) => {
-  try {
-    const { title, date, timeSlot } = req.body;
-    console.log('Received Date:', date);
-
-    const connection = await db.getConnection();
-
-    try {
-      // Format time slot as 'HH:mm:ss'
-      const timeSlotString = timeSlot !== undefined ? timeSlot.toString() : '';
-
-      // Use the received date directly, without generating a new one
-      const formattedDate = new Date(date).toISOString().slice(0, 10);
-
-      const query = 'INSERT INTO appointments (client_id, date, time_slot, title, phone_number) VALUES ((SELECT client_id FROM clients WHERE phone_number = ?), ?, ?, ?, ?)';
-      const [result] = await connection.query(query, [phoneNumber, formattedDate, timeSlotString, title]);
-
-      console.log('Create endpoint reached');
-      console.log('Query:', query, 'Params:', [phoneNumber, formattedDate, timeSlotString, title]);
-      console.log('MySQL Query Result:', result);
-
-      if (result.affectedRows === 1) {
-        const newAppointment = {
-          appointment_id: result.insertId,
-          title,
-          date: formattedDate,
-          time_slot: timeSlotString,
-          phone_number: phoneNumber,
-        };
-
-        connection.release(); // Release the connection back to the pool
-        return res.json(newAppointment);
-      } else {
-        console.error('Unexpected number of affected rows:', result.affectedRows);
-        res.status(500).json({ error: 'Internal Server Error' });
-      }
-    } catch (insertError) {
-      console.error('Error during execution:', insertError);
-      res.status(500).json({ error: 'Internal Server Error', details: insertError.message });
-    }
-  } catch (connectionError) {
-    console.error('Error establishing connection:', connectionError);
-    res.status(500).json({ error: 'Internal Server Error', details: connectionError.message });
-  }
-});
 
 // Fetch all appointments from the database
 app.get('/load-appointments', async (req, res) => {
@@ -296,7 +245,11 @@ app.get('/load-appointments', async (req, res) => {
       let query;
       if (date) {
         // Fetch appointments for a specific date
+        console.log('Before executing load-appointments query');
+        console.log('Load Appointments - Date:', date, 'Week:', week);
         query = 'SELECT * FROM appointments WHERE DATE(date) = ?';
+        console.log('After executing load-appointments query');
+
       } else if (week) {
         // Fetch appointments for a specific week
         query = 'SELECT * FROM appointments WHERE WEEK(date) = ?';

@@ -93,7 +93,7 @@ async function scheduleAppointment(selectedTime) {
         client_id: clientAndDogInfo.client_id,
         dog_id: selectedDog ? selectedDog.dog_id : null,
         time_slot: selectedTime,
-        date: new Date().toISOString().slice(0, 10), // Include the current date
+        date: document.getElementById('date').value, // Use the selected date from the input
         phone_number: clientPhoneNumber,
         // Add other relevant appointment details here
     };
@@ -118,6 +118,35 @@ async function scheduleAppointment(selectedTime) {
     } catch (error) {
         console.error('Error scheduling appointment:', error);
         // Handle errors as needed
+    }
+}
+// Assuming you have a function to insert the appointment into the database
+async function insertAppointmentIntoDatabase(appointmentData) {
+    try {
+        const { client_id, dog_id, time_slot, date } = appointmentData;
+
+        // Format the date as 'YYYY-MM-DD' using your existing function
+        const formattedDate = formatDateForServer(new Date(date));
+
+        // Your MySQL query to insert the appointment into the database
+        const insertQuery = `
+            INSERT INTO appointments (client_id, dog_id, time_slot, date)
+            VALUES (?, ?, ?, ?)
+        `;
+
+        // Execute the query with the provided data
+        const [result] = await db.query(insertQuery, [client_id, dog_id, time_slot, formattedDate]);
+
+        // Assuming the insertion is successful
+        if (result.affectedRows === 1) {
+            return { success: true };
+        } else {
+            console.error('Unexpected number of affected rows:', result.affectedRows);
+            return { success: false, message: 'Error inserting appointment into the database' };
+        }
+    } catch (error) {
+        console.error('Error inserting appointment into the database:', error);
+        return { success: false, message: 'Error inserting appointment into the database' };
     }
 }
 
