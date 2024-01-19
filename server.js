@@ -26,7 +26,10 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Serve HTML files and static assets
 app.use(express.static('public'));
-
+// Customer Profile route
+app.get('/customer-profile', (req, res) => {
+  res.render('customer-profile');
+});
 // Home page route
 app.get('/', (req, res) => {
   // Render the 'home' template

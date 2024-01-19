@@ -1,23 +1,65 @@
-<!-- customer-profile.ejs -->
+<!-- Display search input for client phone numbers above Next Day buttons -->
+<div class="search-container">
+  <label for="clientPhoneNumber">Enter Client Phone Number:</label>
+  <input type="text" id="clientPhoneNumber" class="search-input" placeholder="Enter phone number" oninput="formatPhoneNumber(this)">
+  <button onclick="searchClients()">Search</button>
+</div>
 
-<h1>Customer Profile</h1>
+<!-- Display client and dog information here -->
+<div id="clientInfoContainer">
+  <!-- Content will be dynamically updated here -->
+</div>
 
-<!-- Display client details -->
-<% if (clientAndDogInfo) { %>
-  <h2>Client Information</h2>
-  <p>First Name: <%= clientAndDogInfo.firstname %></p>
-  <p>Last Name: <%= clientAndDogInfo.lastname %></p>
-  <p>Phone Number: <%= clientAndDogInfo.phone_number %></p>
+<script>
+   // Add event listener to format phone number while typing
+function formatPhoneNumber(input) {
+    const cursorPosition = input.selectionStart;
+    const numericValue = input.value.replace(/\D/g, '');
+    const limitedNumericValue = numericValue.slice(0, 10);
 
-  <!-- Display dog details -->
-  <h2>Dog Information</h2>
-  <% if (clientAndDogInfo.dog_id) { %>
-    <p>Dog Name: <%= clientAndDogInfo.dog_name %></p>
-    <p>Breed: <%= clientAndDogInfo.breed %></p>
-    <!-- Add more dog information fields as needed -->
-  <% } else { %>
-    <p>No dog information available.</p>
-  <% } %>
-<% } else { %>
-  <p>Client not found</p>
-<% } %>
+    let formattedNumber = '';
+    let formattedCursorPosition = cursorPosition;
+
+    for (let i = 0; i < limitedNumericValue.length; i++) {
+        if (i === 3 || i === 6) {
+            formattedNumber += '-';
+            if (cursorPosition > i) {
+                formattedCursorPosition++;
+            }
+        }
+        formattedNumber += limitedNumericValue[i];
+    }
+
+    // Update the global variable clientPhoneNumber
+    clientPhoneNumber = formattedNumber;
+
+    input.value = formattedNumber;
+    input.setSelectionRange(formattedCursorPosition, formattedCursorPosition);
+}
+
+async function searchClients() {
+  const phoneNumber = document.getElementById('clientPhoneNumber').value;
+  
+  try {
+      const response = await fetch(`/get-client-profile?phoneNumber=${phoneNumber}`);
+      const data = await response.json();
+
+      if (response.ok) {
+          // Display client and dog information
+          const clientInfoContainer = document.getElementById('clientInfoContainer');
+          clientInfoContainer.innerHTML = `
+              <h2>${data.firstname} ${data.lastname}</h2>
+              <p>Phone Number: ${data.phone_number}</p>
+              <!-- Display other client and dog information as needed -->
+          `;
+      } else {
+          // Handle error case
+          console.error('Error:', data.error);
+          alert('Error fetching client information');
+      }
+  } catch (error) {
+      console.error('Error:', error);
+      alert('Error fetching client information');
+  }
+}
+</script>
