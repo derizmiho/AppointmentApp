@@ -39,15 +39,16 @@ app.get('/create', (req, res) => {
   res.render('create');
 });
 
-async function fetchClientAndDogInfoByPhoneNumber(phoneNumber) {
+// Function to fetch client and dog information by IDs
+async function fetchClientAndDogInfoByIds(clientId, dogId) {
   const query = `
     SELECT clients.*, dogs.*
     FROM clients
     LEFT JOIN dogs ON clients.client_id = dogs.client_id
-    WHERE clients.phone_number = ?;
+    WHERE clients.client_id = ? AND dogs.dog_id = ?;
   `;
 
-  const [result] = await db.query(query, [phoneNumber]);
+  const [result] = await db.query(query, [clientId, dogId]);
   return result[0]; // Assuming you expect only one result
 }
 
@@ -145,6 +146,98 @@ app.post('/edit-appointment/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+async function insertAppointmentIntoDatabase(appointmentData) {
+  try {
+    const { client_id, dog_id, time_slot } = appointmentData;
+
+    // Fetch client and dog information to construct the title
+    const [clientInfo] = await db.query('SELECT firstname, lastname FROM clients WHERE client_id = ?', [client_id]);
+    const [dogInfo] = await db.query('SELECT dog_name FROM dogs WHERE dog_id = ?', [dog_id]);
+
+    // Construct the title using client and dog information
+    const title = `${clientInfo[0].firstname} ${clientInfo[0].lastname} - ${dogInfo[0].dog_name}`;
+
+    // Your MySQL query to insert the appointment into the database with the title
+    const insertQuery = `
+      INSERT INTO appointments (client_id, dog_id, time_slot, title)
+      VALUES (?, ?, ?, ?)
+    `;
+
+    // Execute the query with the provided data
+    const [result] = await db.query(insertQuery, [client_id, dog_id, time_slot, title]);
+
+    // Assuming the insertion is successful
+    if (result.affectedRows === 1) {
+      return { success: true };
+    } else {
+      console.error('Unexpected number of affected rows:', result.affectedRows);
+      return { success: false, message: 'Error inserting appointment into the database' };
+    }
+  } catch (error) {
+    console.error('Error inserting appointment into the database:', error);
+    return { success: false, message: 'Error inserting appointment into the database' };
+  }
+}
+
+
+app.post('/create-appointment', async (req, res) => {
+  try {
+    const appointmentData = req.body;
+
+    // Validate the incoming data
+    if (!isValidAppointmentData(appointmentData)) {
+      return res.status(400).json({ success: false, message: 'Invalid appointment data' });
+    }
+
+    // Fetch client and dog information
+    const clientAndDogInfo = await fetchClientAndDogInfoByIds(appointmentData.client_id, appointmentData.dog_id);
+
+    if (clientAndDogInfo) {
+      // Set the title based on the fetched information
+      appointmentData.title = `${clientAndDogInfo.lastname} ${clientAndDogInfo.firstname} - ${clientAndDogInfo.dog_name}`;
+    } else {
+      return res.status(404).json({ success: false, message: 'Client or dog not found' });
+    }
+
+    // Insert the appointment into the database
+    const insertResult = await insertAppointmentIntoDatabase(appointmentData);
+
+    if (insertResult.success) {
+      // Fetch the newly inserted appointment with the title
+      const [newAppointment] = await db.query('SELECT * FROM appointments WHERE appointment_id = ?', [insertResult.insertId]);
+      res.json({ success: true, message: 'Appointment created successfully', appointment: newAppointment[0] });
+    } else {
+      res.status(500).json({ success: false, message: 'Error creating appointment', error: insertResult.message });
+    }
+  } catch (error) {
+    console.error('Error creating appointment:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error', error: error.message });
+  }
+});
+
+
+
+// Validation function for appointment data
+function isValidAppointmentData(appointmentData) {
+  // Check if appointmentData is an object
+  if (typeof appointmentData !== 'object' || appointmentData === null) {
+      return false;
+  }
+
+  // Ensure required fields are present
+  if (!appointmentData.client_id || !appointmentData.dog_id || !appointmentData.time_slot) {
+      return false;
+  }
+
+  // Validate time_slot format (HH:mm)
+  const timeSlotRegex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
+  if (!timeSlotRegex.test(appointmentData.time_slot)) {
+      return false;
+  }
+
+  // If all validations pass, return true
+  return true;
+}
 
 // Fetch all appointments from the database
 app.post('/create', async (req, res) => {
@@ -162,10 +255,10 @@ app.post('/create', async (req, res) => {
       const formattedDate = new Date(date).toISOString().slice(0, 10);
 
       const query = 'INSERT INTO appointments (client_id, date, time_slot, title, phone_number) VALUES ((SELECT client_id FROM clients WHERE phone_number = ?), ?, ?, ?, ?)';
-      const [result] = await connection.query(query, [phoneNumber, formattedDate, timeSlotString, title, phoneNumber]);
+      const [result] = await connection.query(query, [phoneNumber, formattedDate, timeSlotString, title]);
 
       console.log('Create endpoint reached');
-      console.log('Query:', query, 'Params:', [phoneNumber, formattedDate, timeSlotString, title, phoneNumber]);
+      console.log('Query:', query, 'Params:', [phoneNumber, formattedDate, timeSlotString, title]);
       console.log('MySQL Query Result:', result);
 
       if (result.affectedRows === 1) {

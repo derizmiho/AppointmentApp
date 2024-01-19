@@ -60,22 +60,67 @@
     <div id="searchResults"></div>
 
     <!-- Display available time slots -->
-    <div id="timeSlots">
-        <!-- Loop through time slots and display them vertically -->
-        <% for (let hour = 8; hour < 16; hour++) { %>
-            <% for (let minute = 0; minute < 60; minute += 30) { %>
-                <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
-                <div class="time-slot" onclick="selectTime('<%= timeSlotValue %>')">
-                    <p><%= timeSlotValue %></p>
-                    <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
-                </div>
-            <% } %>
+<div id="timeSlots">
+    <!-- Loop through time slots and display them as buttons -->
+    <% for (let hour = 8; hour < 16; hour++) { %>
+        <% for (let minute = 0; minute < 60; minute += 30) { %>
+            <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
+            <button class="time-slot-button" onclick="scheduleAppointment('<%= timeSlotValue %>')">
+                <p><%= timeSlotValue %></p>
+                <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
+            </button>
         <% } %>
-    </div>
+    <% } %>
+</div>
 
-    
-    <!-- JavaScript for create page -->
-    <script>
+<!-- JavaScript for create page -->
+<script>
+
+    // Updated function to schedule appointments
+async function scheduleAppointment(selectedTime) {
+    // Check if clientAndDogInfo is available
+    if (!clientAndDogInfo) {
+        console.error('Client and dog information is not available.');
+        return;
+    }
+
+    // Get the selected dog from the dropdown
+    const selectedDogNumber = parseInt(document.getElementById('dogDropdown').value);
+    const selectedDog = clientAndDogInfo.dogs[selectedDogNumber - 1];
+
+    // Prepare data for the appointment
+    const appointmentData = {
+        client_id: clientAndDogInfo.client_id,
+        dog_id: selectedDog ? selectedDog.dog_id : null,
+        time_slot: selectedTime,
+        date: new Date().toISOString().slice(0, 10), // Include the current date
+        phone_number: clientPhoneNumber,
+        // Add other relevant appointment details here
+    };
+    console.log('Sending appointment data:', appointmentData);
+
+    try {
+        // Send a POST request to the server to create a new appointment
+        const response = await fetch('/create-appointment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(appointmentData),
+        });
+
+        const result = await response.json();
+        console.log('Appointment creation result:', result);
+
+        // Optionally, you can update the UI to reflect the newly scheduled appointment
+        // ...
+
+    } catch (error) {
+        console.error('Error scheduling appointment:', error);
+        // Handle errors as needed
+    }
+}
+
         function loadPetInformation(selectedDog) {
             console.log('Selected Dog Information:', selectedDog);
 
@@ -98,7 +143,7 @@
 
     // You can add more elements for additional information as needed
 }
-
+        let clientPhoneNumber;
         let clientAndDogInfo;
         document.addEventListener('DOMContentLoaded', () => {
             // Set the default value for the date input after the page has loaded
@@ -121,27 +166,30 @@
         });
 
         // Add event listener to format phone number while typing
-        function formatPhoneNumber(input) {
-            const cursorPosition = input.selectionStart;
-            const numericValue = input.value.replace(/\D/g, '');
-            const limitedNumericValue = numericValue.slice(0, 10);
+function formatPhoneNumber(input) {
+    const cursorPosition = input.selectionStart;
+    const numericValue = input.value.replace(/\D/g, '');
+    const limitedNumericValue = numericValue.slice(0, 10);
 
-            let formattedNumber = '';
-            let formattedCursorPosition = cursorPosition;
+    let formattedNumber = '';
+    let formattedCursorPosition = cursorPosition;
 
-            for (let i = 0; i < limitedNumericValue.length; i++) {
-                if (i === 3 || i === 6) {
-                    formattedNumber += '-';
-                    if (cursorPosition > i) {
-                        formattedCursorPosition++;
-                    }
-                }
-                formattedNumber += limitedNumericValue[i];
+    for (let i = 0; i < limitedNumericValue.length; i++) {
+        if (i === 3 || i === 6) {
+            formattedNumber += '-';
+            if (cursorPosition > i) {
+                formattedCursorPosition++;
             }
-
-            input.value = formattedNumber;
-            input.setSelectionRange(formattedCursorPosition, formattedCursorPosition);
         }
+        formattedNumber += limitedNumericValue[i];
+    }
+
+    // Update the global variable clientPhoneNumber
+    clientPhoneNumber = formattedNumber;
+
+    input.value = formattedNumber;
+    input.setSelectionRange(formattedCursorPosition, formattedCursorPosition);
+}
 
         // Function to format the date as YYYY-MM-DD for server communication
 function formatDateForServer(date) {
