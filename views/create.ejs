@@ -30,24 +30,6 @@
         <input type="text" id="clientPhoneNumber" class="search-input" placeholder="Enter phone number" oninput="formatPhoneNumber(this)">
         <button onclick="searchClients()">Search</button>
     </div>
-
-    <!-- Display client details -->
-    <div id="clientDetails">
-        <!-- Client details will be displayed here -->
-    </div>
-<!-- Dog Dropdown Container -->
-<div id="dogDropdownContainer">
-    <label for="dogDropdown">Select Dog:</label>
-    <select id="dogDropdown"></select>
-</div>
-<!-- Add a button for confirming the selection -->
-<button onclick="confirmPetSelection()">Confirm</button>
-
-<!-- Add a container for pet information -->
-<div id="petInformation">
-    <!-- Pet information will be displayed here -->
-</div>
-
     <!-- Dropdown to select weeks 1-12 -->
     <label for="weekSelect">Select Week:</label>
     <select id="weekSelect" onchange="loadAppointmentsForWeek()">
@@ -55,6 +37,23 @@
             <option value="<%= i %>">Week <%= i %></option>
         <% } %>
     </select>
+    <!-- Display client details -->
+    <div id="clientDetails">
+        <!-- Client details will be displayed here -->
+    </div>
+<!-- Add a container for pet information -->
+<div id="petInformation">
+    <!-- Pet information will be displayed here -->
+</div>
+    <!-- Dog Dropdown Container -->
+<div id="dogDropdownContainer">
+    <label for="dogDropdown">Select Dog:</label>
+    <select id="dogDropdown"></select>
+</div>
+
+
+
+    
 
     <!-- Display search results (optional) -->
     <div id="searchResults"></div>
@@ -454,7 +453,6 @@ function displayClientDetails() {
             <h2>Client Information</h2>
             <p>First Name: ${clientAndDogInfo.firstname}</p>
             <p>Last Name: ${clientAndDogInfo.lastname}</p>
-            <p>Phone Number: ${clientAndDogInfo.phone_number}</p>
         `;
 
         // Append client details to the container
