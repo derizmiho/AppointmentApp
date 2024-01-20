@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <style>
+        .has-appointment-container {
+    display: none;
+}
+    
+        .appointment-info-container {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 5px;
+            background-color: #f8f8f8;
+        }
+    </style>
+    
+    
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create and View Appointments</title>
@@ -57,15 +72,24 @@
     <!-- Display available time slots -->
 <div id="timeSlots">
     <!-- Loop through time slots and display them as buttons -->
+    <!-- Display available time slots -->
+<div id="timeSlots">
+    <!-- Loop through time slots and display them as buttons -->
     <% for (let hour = 8; hour < 16; hour++) { %>
         <% for (let minute = 0; minute < 60; minute += 30) { %>
             <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
-            <button class="time-slot-button" data-time="<%= timeSlotValue %>" onclick="scheduleAppointment('<%= timeSlotValue %>')">
-                <p><%= timeSlotValue %></p>
-                <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
-            </button>
+            <div class="time-slot-container">
+                <button class="time-slot-button" data-time="<%= timeSlotValue %>" onclick="scheduleAppointment('<%= timeSlotValue %>')">
+                    <p><%= timeSlotValue %></p>
+                    <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
+                </button>
+                <!-- Add a container div for appointment info -->
+                <div class="appointment-info-container" id="<%= `appointment-info-${timeSlotValue.replace(':', '')}` %>"></div>
+            </div>
         <% } %>
     <% } %>
+</div>
+
 </div>
 
 <!-- JavaScript for create page -->
@@ -277,13 +301,15 @@ function formatDateDefault(date) {
         
         // Function to clear all appointment titles from time slots
         function clearAllAppointments() {
-            const allTimeSlots = document.getElementById('timeSlots').children;
+    // Remove all appointment containers
+    const allAppointmentContainers = document.querySelectorAll('.appointment-info-container');
+    allAppointmentContainers.forEach(container => container.remove());
 
-            for (const timeSlot of allTimeSlots) {
-                const timeSlotElement = timeSlot.children[1];
-                clearAppointmentTitle(timeSlotElement);
-            }
-        }
+    // Remove the 'has-appointment' class from all time slot buttons
+    const allTimeSlots = document.querySelectorAll('.time-slot-button');
+    allTimeSlots.forEach(timeSlot => timeSlot.classList.remove('has-appointment', 'has-appointment-container'));
+}
+
 
          // Function to display the current day
          function displayCurrentDay(date) {
@@ -292,8 +318,7 @@ function formatDateDefault(date) {
             document.getElementById('currentDay').textContent = `Current Day: ${formattedDate}`;
         }
 
-        // Function to fetch and display appointments
-async function fetchAndDisplayAppointments() {
+        async function fetchAndDisplayAppointments() {
     const selectedDate = document.getElementById('date').value;
 
     console.log('Fetching Appointments for Date:', selectedDate);
@@ -316,32 +341,46 @@ async function fetchAndDisplayAppointments() {
             console.log('Processing time slot:', timeSlotId);
             console.log('Time slot element:', timeSlotElement);
 
-            // Add the appointment to the time slot
+            // Add a class to the time slot button indicating it has an appointment
             if (timeSlotElement) {
-                // Create a new div for the time slot and appointment with inline styles
-                const containerDiv = document.createElement('div');
-                containerDiv.style.display = 'flex';
-                containerDiv.style.alignItems = 'center';
+                timeSlotElement.classList.add('has-appointment');
 
-                // Create a div for the time slot
-                const timeSlotDiv = document.createElement('div');
-                timeSlotDiv.textContent = timeSlotElement.textContent;
+                // Create a container div for appointment info
+                const containerDivId = `appointment-info-${timeSlotId.replace(':', '')}`;
+                let containerDiv = document.getElementById(containerDivId);
+
+                if (!containerDiv) {
+                    // Get the parent of the time slot element (button's parent)
+                    const parentElement = timeSlotElement.parentNode;
+
+                    // Create the container div and append it after the button's parent
+                    containerDiv = document.createElement('div');
+                    containerDiv.id = containerDivId;
+                    containerDiv.className = 'appointment-info-container';
+
+                    // Create a div for the time slot
+                    const timeSlotDiv = document.createElement('div');
+                    timeSlotDiv.textContent = appointment.time_slot;
+
+                    // Append the time slot div to the container
+                    containerDiv.appendChild(timeSlotDiv);
+
+                    // Append the container div after the button's parent
+                    parentElement.parentNode.insertBefore(containerDiv, parentElement.nextSibling);
+                }
 
                 // Create a div for the appointment title
                 const appointmentDiv = document.createElement('div');
                 appointmentDiv.textContent = appointment.title;
-                appointmentDiv.style.marginLeft = '10px'; // Adjust the margin as needed
 
-                // Append both divs to the container
-                containerDiv.appendChild(timeSlotDiv);
+                // Append the div to the container
                 containerDiv.appendChild(appointmentDiv);
 
-                // Replace the content of the time slot element with the container
-                timeSlotElement.innerHTML = '';
-                timeSlotElement.appendChild(containerDiv);
-            }
+                // Add a class to the time slot container indicating it has appointment info
+                timeSlotElement.parentNode.classList.add('has-appointment-container');
 
-            console.log('Updated time slot:', timeSlotId);
+                console.log('Updated time slot:', timeSlotId);
+            }
         });
 
         console.log('All time slots processed.');
@@ -355,147 +394,6 @@ async function fetchAndDisplayAppointments() {
         console.error('Error loading appointments:', error);
     }
 }
-
-async function searchClients() {
-    // Get the search input element and search results container
-    const searchInput = document.getElementById('clientPhoneNumber');
-    const searchResultsContainer = document.getElementById('searchResults');
-
-    // Check if searchInput is null
-    if (!searchInput) {
-        console.error('Search input element not found.');
-        return;
-    }
-
-    // Get the formatted phone number
-    let phoneNumber = searchInput.value.trim();
-    phoneNumber = phoneNumber.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-
-    try {
-        // Make a request to the server to get the client profile
-        const response = await fetch(`/get-client-profile?phoneNumber=${phoneNumber}`);
-        const clientProfile = await response.json();
-
-        console.log('Server Response (clientProfile):', clientProfile);
-
-        // Check if a client was found
-        if (clientProfile.client_id) {
-            // Update the clientAndDogInfo object
-            clientAndDogInfo = clientProfile;
-
-            // Display client details on the page
-            displayClientDetails();
-
-            console.log('Client and Dog Info:', clientAndDogInfo);
-
-            // Check if there are dogs available for the selected client
-            if (clientAndDogInfo.dogs && clientAndDogInfo.dogs.length > 0) {
-                // Dynamically populate the dog dropdown based on the selected client
-                populateDogDropdown(clientAndDogInfo.dogs); // Wrap the dog information in an array
-            } else {
-                // Display an error message if no dogs are associated with the client
-                searchResultsContainer.textContent = 'No dogs found for the selected client.';
-            }
-        } else {
-            // Display an error message if the client was not found
-            searchResultsContainer.textContent = `Client not found for phone number: ${phoneNumber}`;
-        }
-    } catch (error) {
-        // Handle any errors that occur during the fetch operation
-        console.error('Error searching for client:', error);
-        searchResultsContainer.textContent = 'Error searching for client. Please try again.';
-    }
-}
-
-function populateDogDropdown(dogsArray) {
-    console.log('Received dogsArray:', dogsArray);
-
-    const dropdown = document.getElementById('dogDropdown');
-
-    // Clear existing options
-    dropdown.innerHTML = '';
-
-    // Check if dogsArray is defined and not null
-    if (dogsArray && Array.isArray(dogsArray) && dogsArray.length > 0) {
-        // Add default option
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '0';
-        defaultOption.text = 'Select Dog';
-        dropdown.add(defaultOption);
-
-        // Iterate through dogsArray and populate dropdown
-        dogsArray.forEach((dog, index) => {
-            const option = document.createElement('option');
-            option.value = (index + 1).toString(); // Option value is the position in the array
-            option.text = `Dog ${index + 1}: ${dog.dog_name}`;
-            dropdown.add(option);
-        });
-
-        // Add event listener
-        dropdown.addEventListener('change', () => {
-            const selectedDogIndex = dropdown.value - 1; // Adjusting for index + 1
-            if (selectedDogIndex >= 0 && selectedDogIndex < dogsArray.length) {
-                // Call a function to load information based on the selected dog
-                loadPetInformation(dogsArray[selectedDogIndex]);
-            }
-        });
-    } else {
-        console.error('Dogs array is not defined or not an array.');
-    }
-}
-
-
-
-function confirmPetSelection() {
-    const dogDropdown = document.getElementById('dogDropdown');
-    const petInformationContainer = document.getElementById('petInformation');
-
-    // Get the selected dog number from the dropdown
-    const selectedDogNumber = parseInt(dogDropdown.value);
-
-    // Find the selected dog from the array
-    const selectedDog = clientAndDogInfo.dogs.find(dog => dog.dogNumber === selectedDogNumber);
-
-    // Display pet information
-    if (selectedDog) {
-        petInformationContainer.innerHTML = `
-            <h2>Pet Information</h2>
-            <p>Name: ${selectedDog.name}</p>
-            <p>Breed: ${selectedDog.breed}</p>
-            <!-- Add more pet information fields as needed -->
-        `;
-    } else {
-        // Clear pet information if no dog is selected
-        petInformationContainer.innerHTML = '';
-    }
-}
-
-
-function displayClientDetails() {
-    // Display client details on the page
-    const clientDetailsContainer = document.getElementById('clientDetails');
-    clientDetailsContainer.innerHTML = '';
-
-    // Check if clientAndDogInfo is defined
-    if (typeof clientAndDogInfo !== 'undefined' && clientAndDogInfo !== null) {
-        // Display client details
-        const clientDetails = document.createElement('div');
-        clientDetails.innerHTML = `
-            <h2>Client Information</h2>
-            <p>First Name: ${clientAndDogInfo.firstname}</p>
-            <p>Last Name: ${clientAndDogInfo.lastname}</p>
-        `;
-
-        // Append client details to the container
-        clientDetailsContainer.appendChild(clientDetails);
-
-        // Display dog dropdown
-        document.getElementById('dogDropdownContainer').style.display = 'block';
-    } else {
-        console.error('Invalid clientAndDogInfo structure:', clientAndDogInfo);
-    }
-}
-
 
         // Function to load appointments for the selected week
 function loadAppointmentsForWeek() {
