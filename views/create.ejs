@@ -156,6 +156,12 @@ async function scheduleAppointment(selectedTime) {
 
             // Replace the time slot button with the container
             timeSlotButton.parentNode.replaceChild(containerDiv, timeSlotButton);
+
+            // Store the selected date in sessionStorage
+            sessionStorage.setItem('selectedDate', document.getElementById('date').value);
+
+            // Refresh the page
+            window.location.reload(true);
         }
     } catch (error) {
         console.error('Error scheduling appointment:', error);
@@ -233,7 +239,11 @@ async function insertAppointmentIntoDatabase(appointmentData) {
             const currentDateInput = document.getElementById('date');
             const currentDate = new Date();
             currentDateInput.value = formatDateDefault(currentDate);
-
+ // Add the event listener for the "Search" button
+ const searchButton = document.getElementById('searchButton'); // Replace with your actual button ID
+    if (searchButton) {
+        searchButton.addEventListener('click', searchClients);
+    }
             
     // Add event listener for date change
     currentDateInput.addEventListener('change', () => {
@@ -394,7 +404,120 @@ function formatDateDefault(date) {
         console.error('Error loading appointments:', error);
     }
 }
-
+async function searchClients() {
+    // Get the search input element and search results container
+    const searchInput = document.getElementById('clientPhoneNumber');
+    const searchResultsContainer = document.getElementById('searchResults');
+    // Check if searchInput is null
+    if (!searchInput) {
+        console.error('Search input element not found.');
+        return;
+    }
+    // Get the formatted phone number
+    let phoneNumber = searchInput.value.trim();
+    phoneNumber = phoneNumber.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+    try {
+        // Make a request to the server to get the client profile
+        const response = await fetch(`/get-client-profile?phoneNumber=${phoneNumber}`);
+        const clientProfile = await response.json();
+        console.log('Server Response (clientProfile):', clientProfile);
+        // Check if a client was found
+        if (clientProfile.client_id) {
+            // Update the clientAndDogInfo object
+            clientAndDogInfo = clientProfile;
+            // Display client details on the page
+            displayClientDetails();
+            console.log('Client and Dog Info:', clientAndDogInfo);
+            // Check if there are dogs available for the selected client
+            if (clientAndDogInfo.dogs && clientAndDogInfo.dogs.length > 0) {
+                // Dynamically populate the dog dropdown based on the selected client
+                populateDogDropdown(clientAndDogInfo.dogs); // Wrap the dog information in an array
+            } else {
+                // Display an error message if no dogs are associated with the client
+                searchResultsContainer.textContent = 'No dogs found for the selected client.';
+            }
+        } else {
+            // Display an error message if the client was not found
+            searchResultsContainer.textContent = `Client not found for phone number: ${phoneNumber}`;
+        }
+    } catch (error) {
+        // Handle any errors that occur during the fetch operation
+        console.error('Error searching for client:', error);
+        searchResultsContainer.textContent = 'Error searching for client. Please try again.';
+    }
+}
+function populateDogDropdown(dogsArray) {
+    console.log('Received dogsArray:', dogsArray);
+    const dropdown = document.getElementById('dogDropdown');
+    // Clear existing options
+    dropdown.innerHTML = '';
+    // Check if dogsArray is defined and not null
+    if (dogsArray && Array.isArray(dogsArray) && dogsArray.length > 0) {
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '0';
+        defaultOption.text = 'Select Dog';
+        dropdown.add(defaultOption);
+        // Iterate through dogsArray and populate dropdown
+        dogsArray.forEach((dog, index) => {
+            const option = document.createElement('option');
+            option.value = (index + 1).toString(); // Option value is the position in the array
+            option.text = `Dog ${index + 1}: ${dog.dog_name}`;
+            dropdown.add(option);
+        });
+        // Add event listener
+        dropdown.addEventListener('change', () => {
+            const selectedDogIndex = dropdown.value - 1; // Adjusting for index + 1
+            if (selectedDogIndex >= 0 && selectedDogIndex < dogsArray.length) {
+                // Call a function to load information based on the selected dog
+                loadPetInformation(dogsArray[selectedDogIndex]);
+            }
+        });
+    } else {
+        console.error('Dogs array is not defined or not an array.');
+    }
+}
+function confirmPetSelection() {
+    const dogDropdown = document.getElementById('dogDropdown');
+    const petInformationContainer = document.getElementById('petInformation');
+    // Get the selected dog number from the dropdown
+    const selectedDogNumber = parseInt(dogDropdown.value);
+    // Find the selected dog from the array
+    const selectedDog = clientAndDogInfo.dogs.find(dog => dog.dogNumber === selectedDogNumber);
+    // Display pet information
+    if (selectedDog) {
+        petInformationContainer.innerHTML = `
+            <h2>Pet Information</h2>
+            <p>Name: ${selectedDog.name}</p>
+            <p>Breed: ${selectedDog.breed}</p>
+            <!-- Add more pet information fields as needed -->
+        `;
+    } else {
+        // Clear pet information if no dog is selected
+        petInformationContainer.innerHTML = '';
+    }
+}
+function displayClientDetails() {
+    // Display client details on the page
+    const clientDetailsContainer = document.getElementById('clientDetails');
+    clientDetailsContainer.innerHTML = '';
+    // Check if clientAndDogInfo is defined
+    if (typeof clientAndDogInfo !== 'undefined' && clientAndDogInfo !== null) {
+        // Display client details
+        const clientDetails = document.createElement('div');
+        clientDetails.innerHTML = `
+            <h2>Client Information</h2>
+            <p>First Name: ${clientAndDogInfo.firstname}</p>
+            <p>Last Name: ${clientAndDogInfo.lastname}</p>
+        `;
+        // Append client details to the container
+        clientDetailsContainer.appendChild(clientDetails);
+        // Display dog dropdown
+        document.getElementById('dogDropdownContainer').style.display = 'block';
+    } else {
+        console.error('Invalid clientAndDogInfo structure:', clientAndDogInfo);
+    }
+}
         // Function to load appointments for the selected week
 function loadAppointmentsForWeek() {
     // Get the selected week value from the dropdown
