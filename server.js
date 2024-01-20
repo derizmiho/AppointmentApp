@@ -55,6 +55,30 @@ async function fetchClientAndDogInfoByIds(clientId, dogId) {
   return result[0]; // Assuming you expect only one result
 }
 
+app.get('/fetch-client-dog-info', async (req, res) => {
+    try {
+        const clientId = req.query.clientId;
+        const dogId = req.query.dogId;
+
+        // Fetch client and dog information from the database
+        const [result] = await db.query(`
+            SELECT clients.lastname, clients.firstname, dogs.dog_name
+            FROM clients
+            LEFT JOIN dogs ON clients.client_id = dogs.client_id
+            WHERE clients.client_id = ? AND dogs.dog_id = ?;
+        `, [clientId, dogId]);
+
+        if (result.length > 0) {
+            const clientAndDogInfo = result[0];
+            res.json(clientAndDogInfo);
+        } else {
+            res.status(404).json({ error: 'Client and dog information not found' });
+        }
+    } catch (error) {
+        console.error('Error fetching client and dog information:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 
 app.get('/customer-profile', async (req, res) => {

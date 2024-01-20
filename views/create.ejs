@@ -60,7 +60,7 @@
     <% for (let hour = 8; hour < 16; hour++) { %>
         <% for (let minute = 0; minute < 60; minute += 30) { %>
             <% const timeSlotValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`; %>
-            <button class="time-slot-button" onclick="scheduleAppointment('<%= timeSlotValue %>')">
+            <button class="time-slot-button" data-time="<%= timeSlotValue %>" onclick="scheduleAppointment('<%= timeSlotValue %>')">
                 <p><%= timeSlotValue %></p>
                 <p id="<%= `appointment-${timeSlotValue.replace(':', '')}` %>"></p>
             </button>
@@ -71,7 +71,6 @@
 <!-- JavaScript for create page -->
 <script>
 
-    // Updated function to schedule appointments
 async function scheduleAppointment(selectedTime) {
     // Check if clientAndDogInfo is available
     if (!clientAndDogInfo) {
@@ -90,9 +89,7 @@ async function scheduleAppointment(selectedTime) {
         time_slot: selectedTime,
         date: document.getElementById('date').value, // Use the selected date from the input
         phone_number: clientPhoneNumber,
-        // Add other relevant appointment details here
     };
-    console.log('Sending appointment data:', appointmentData);
 
     try {
         // Send a POST request to the server to create a new appointment
@@ -105,16 +102,54 @@ async function scheduleAppointment(selectedTime) {
         });
 
         const result = await response.json();
+        console.log('Server Response (scheduleAppointment):', result);
         console.log('Appointment creation result:', result);
 
-        // Optionally, you can update the UI to reflect the newly scheduled appointment
-        // ...
+        // Fetch additional information (lastname, firstname, dog_name) based on client_id and dog_id
+        const clientAndDogInfo = await fetchClientAndDogInfo(appointmentData.client_id, appointmentData.dog_id);
 
+        // Update the UI to reflect the newly scheduled appointment
+        const timeSlotButton = document.querySelector(`button[data-time="${selectedTime}"]`);
+        if (timeSlotButton) {
+            // Create a new div for the appointment with inline styles
+            const containerDiv = document.createElement('div');
+            containerDiv.style.display = 'flex';
+            containerDiv.style.alignItems = 'center';
+
+            // Create a div for the time slot
+            const timeSlotDiv = document.createElement('div');
+            timeSlotDiv.textContent = selectedTime;
+
+            // Create a div for the appointment title
+            const appointmentDiv = document.createElement('div');
+            // Set the text content for the appointmentDiv
+            appointmentDiv.textContent = `${clientAndDogInfo.lastname}, ${clientAndDogInfo.firstname} - ${clientAndDogInfo.dog_name}`;
+            appointmentDiv.style.marginLeft = '10px'; // Adjust the margin as needed
+
+            // Append both divs to the container
+            containerDiv.appendChild(timeSlotDiv);
+            containerDiv.appendChild(appointmentDiv);
+
+            // Replace the time slot button with the container
+            timeSlotButton.parentNode.replaceChild(containerDiv, timeSlotButton);
+        }
     } catch (error) {
         console.error('Error scheduling appointment:', error);
         // Handle errors as needed
     }
 }
+async function fetchClientAndDogInfo(clientId, dogId) {
+    try {
+        const response = await fetch(`/fetch-client-dog-info?clientId=${clientId}&dogId=${dogId}`);
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Error fetching client and dog information:', error);
+        throw error;
+    }
+}
+
+
 // Assuming you have a function to insert the appointment into the database
 async function insertAppointmentIntoDatabase(appointmentData) {
     try {
