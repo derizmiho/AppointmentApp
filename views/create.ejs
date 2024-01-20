@@ -232,31 +232,38 @@ async function insertAppointmentIntoDatabase(appointmentData) {
 
     // You can add more elements for additional information as needed
 }
-        let clientPhoneNumber;
-        let clientAndDogInfo;
-        document.addEventListener('DOMContentLoaded', () => {
-            // Set the default value for the date input after the page has loaded
-            const currentDateInput = document.getElementById('date');
-            const currentDate = new Date();
-            currentDateInput.value = formatDateDefault(currentDate);
- // Add the event listener for the "Search" button
- const searchButton = document.getElementById('searchButton'); // Replace with your actual button ID
-    if (searchButton) {
-        searchButton.addEventListener('click', searchClients);
-    }
-            
+let clientPhoneNumber;
+let clientAndDogInfo;
+document.addEventListener('DOMContentLoaded', () => {
+    // Set the default value for the date input after the page has loaded
+    const currentDateInput = document.getElementById('date');
+    const currentDate = new Date();
+
+    // Check if selectedDate is in sessionStorage and set the date accordingly
+    const selectedDate = sessionStorage.getItem('selectedDate');
+    currentDateInput.value = selectedDate || formatDateDefault(currentDate);
+
     // Add event listener for date change
     currentDateInput.addEventListener('change', () => {
+        // Store the selected date in sessionStorage
+        sessionStorage.setItem('selectedDate', currentDateInput.value);
+
         // Reload appointments when the date changes
         fetchAndDisplayAppointments();
     });
-            
-            // Display the current day
-            displayCurrentDay(currentDate);
 
-            // Load existing appointments on page load
-            fetchAndDisplayAppointments();
-        });
+    // Display the current day
+    displayCurrentDay(currentDate);
+
+    // Load existing appointments on page load
+    fetchAndDisplayAppointments();
+});
+
+// Add the event listener for the "Search" button
+const searchButton = document.getElementById('searchButton'); // Replace with your actual button ID
+if (searchButton) {
+    searchButton.addEventListener('click', searchClients);
+}
 
         // Add event listener to format phone number while typing
 function formatPhoneNumber(input) {
