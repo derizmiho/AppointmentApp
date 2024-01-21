@@ -313,7 +313,7 @@ app.get('/get-appointments', (req, res) => {
   res.json(appointments);
 });
 // Usage in your server code
-app.post('/cancel-appointment/:id', (req, res) => {
+app.delete('/cancel-appointment/:id', (req, res) => {
   const appointmentId = req.params.id;
 
   // Implement the logic to cancel the appointment (e.g., update the database)

@@ -214,29 +214,49 @@ async function insertAppointmentIntoDatabase(appointmentData) {
         return { success: false, message: 'Error inserting appointment into the database' };
     }
 }
-async function deleteAppointment(appointmentId) {
-    console.log('Delete button clicked. Appointment ID:', appointmentId);
+async function deleteAppointment(timeSlot, clientId, dogId) {
+    const confirmation = confirm('Are you sure you want to cancel this appointment?');
 
-    try {
-        const response = await fetch(`/cancel-appointment/${appointmentId}`, {
-            method: 'POST',
-        });
+    if (confirmation) {
+        try {
+            const response = await fetch(`/cancel-appointment/${timeSlot}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
 
-        const result = await response.json();
-        console.log('Server Response (deleteAppointment):', result);
+            const result = await response.json();
+            console.log(result.message); // Log the server response message
 
-        // If deletion was successful, you can remove the appointment from the UI
-        if (result.message === 'Appointment canceled successfully') {
-            removeAppointmentFromUI(appointmentId);
-        } else {
-            console.error('Failed to cancel appointment:', result.error || 'Unknown error');
-            // Handle failure as needed
+            // If the deletion was successful, remove the appointment info from the UI
+            if (response.ok) {
+                const timeSlotId = `appointment-${timeSlot.replace(':', '')}`;
+                const containerDivId = `appointment-info-${timeSlotId.replace(':', '')}`;
+                const containerDiv = document.getElementById(containerDivId);
+
+                // Remove the appointment info container from the UI
+                if (containerDiv) {
+                    containerDiv.parentNode.removeChild(containerDiv);
+                }
+
+                // Remove the "has-appointment" class from the time slot button
+                const timeSlotButton = document.getElementById(timeSlotId);
+                if (timeSlotButton) {
+                    timeSlotButton.classList.remove('has-appointment');
+                }
+
+                console.log('Appointment deleted successfully from the UI.');
+            }
+        } catch (error) {
+            console.error('Error canceling appointment:', error);
+            // Handle errors as needed
         }
-    } catch (error) {
-        console.error('Error canceling appointment:', error);
-        // Handle errors as needed
+    } else {
+        console.log('Deletion canceled by user.');
     }
 }
+
 
 
 
