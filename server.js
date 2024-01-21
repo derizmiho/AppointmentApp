@@ -312,8 +312,7 @@ app.get('/get-appointments', (req, res) => {
 
   res.json(appointments);
 });
-
-// Server-side code for canceling an appointment
+// Usage in your server code
 app.post('/cancel-appointment/:id', (req, res) => {
   const appointmentId = req.params.id;
 
@@ -327,6 +326,8 @@ app.post('/cancel-appointment/:id', (req, res) => {
     }
   });
 });
+
+
 
 // Start the server
 app.listen(port, () => {

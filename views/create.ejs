@@ -95,6 +95,9 @@
 <!-- JavaScript for create page -->
 <script>
 
+// ... (existing code)
+
+// Update the scheduleAppointment function
 async function scheduleAppointment(selectedTime) {
     // Check if clientAndDogInfo is available
     if (!clientAndDogInfo) {
@@ -130,7 +133,7 @@ async function scheduleAppointment(selectedTime) {
         console.log('Appointment creation result:', result);
 
         // Fetch additional information (lastname, firstname, dog_name) based on client_id and dog_id
-        const clientAndDogInfo = await fetchClientAndDogInfo(appointmentData.client_id, appointmentData.dog_id);
+        const updatedClientAndDogInfo = await fetchClientAndDogInfo(appointmentData.client_id, appointmentData.dog_id);
 
         // Update the UI to reflect the newly scheduled appointment
         const timeSlotButton = document.querySelector(`button[data-time="${selectedTime}"]`);
@@ -147,7 +150,7 @@ async function scheduleAppointment(selectedTime) {
             // Create a div for the appointment title
             const appointmentDiv = document.createElement('div');
             // Set the text content for the appointmentDiv
-            appointmentDiv.textContent = `${clientAndDogInfo.lastname}, ${clientAndDogInfo.firstname} - ${clientAndDogInfo.dog_name}`;
+            appointmentDiv.textContent = `${updatedClientAndDogInfo.lastname}, ${updatedClientAndDogInfo.firstname} - ${updatedClientAndDogInfo.dog_name}`;
             appointmentDiv.style.marginLeft = '10px'; // Adjust the margin as needed
 
             // Append both divs to the container
@@ -157,17 +160,19 @@ async function scheduleAppointment(selectedTime) {
             // Replace the time slot button with the container
             timeSlotButton.parentNode.replaceChild(containerDiv, timeSlotButton);
 
-            // Store the selected date in sessionStorage
-            sessionStorage.setItem('selectedDate', document.getElementById('date').value);
-
-            // Refresh the page
-            window.location.reload(true);
+            // Update the URL with the selected date
+            const currentDateInput = document.getElementById('date');
+            const searchParams = new URLSearchParams(window.location.search);
+            searchParams.set('date', currentDateInput.value);
+            history.replaceState(null, null, '?' + searchParams.toString());
         }
     } catch (error) {
         console.error('Error scheduling appointment:', error);
         // Handle errors as needed
     }
 }
+
+
 async function fetchClientAndDogInfo(clientId, dogId) {
     try {
         const response = await fetch(`/fetch-client-dog-info?clientId=${clientId}&dogId=${dogId}`);
@@ -209,6 +214,32 @@ async function insertAppointmentIntoDatabase(appointmentData) {
         return { success: false, message: 'Error inserting appointment into the database' };
     }
 }
+async function deleteAppointment(appointmentId) {
+    console.log('Delete button clicked. Appointment ID:', appointmentId);
+
+    try {
+        const response = await fetch(`/cancel-appointment/${appointmentId}`, {
+            method: 'POST',
+        });
+
+        const result = await response.json();
+        console.log('Server Response (deleteAppointment):', result);
+
+        // If deletion was successful, you can remove the appointment from the UI
+        if (result.message === 'Appointment canceled successfully') {
+            removeAppointmentFromUI(appointmentId);
+        } else {
+            console.error('Failed to cancel appointment:', result.error || 'Unknown error');
+            // Handle failure as needed
+        }
+    } catch (error) {
+        console.error('Error canceling appointment:', error);
+        // Handle errors as needed
+    }
+}
+
+
+
 
         function loadPetInformation(selectedDog) {
             console.log('Selected Dog Information:', selectedDog);
@@ -232,38 +263,36 @@ async function insertAppointmentIntoDatabase(appointmentData) {
 
     // You can add more elements for additional information as needed
 }
-let clientPhoneNumber;
-let clientAndDogInfo;
-document.addEventListener('DOMContentLoaded', () => {
-    // Set the default value for the date input after the page has loaded
-    const currentDateInput = document.getElementById('date');
-    const currentDate = new Date();
-
+        let clientPhoneNumber;
+        let clientAndDogInfo;
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set the default value for the date input after the page has loaded
+            const currentDateInput = document.getElementById('date');
+            const currentDate = new Date();
+           
     // Check if selectedDate is in sessionStorage and set the date accordingly
     const selectedDate = sessionStorage.getItem('selectedDate');
     currentDateInput.value = selectedDate || formatDateDefault(currentDate);
-
+            currentDateInput.value = formatDateDefault(currentDate);
+ // Add the event listener for the "Search" button
+ const searchButton = document.getElementById('searchButton'); // Replace with your actual button ID
+    if (searchButton) {
+        searchButton.addEventListener('click', searchClients);
+    }
+            
     // Add event listener for date change
     currentDateInput.addEventListener('change', () => {
-        // Store the selected date in sessionStorage
-        sessionStorage.setItem('selectedDate', currentDateInput.value);
-
         // Reload appointments when the date changes
         fetchAndDisplayAppointments();
     });
+            
+            // Display the current day
+            displayCurrentDay(currentDate);
+            localStorage.removeItem('selectedDate');
 
-    // Display the current day
-    displayCurrentDay(currentDate);
-
-    // Load existing appointments on page load
-    fetchAndDisplayAppointments();
-});
-
-// Add the event listener for the "Search" button
-const searchButton = document.getElementById('searchButton'); // Replace with your actual button ID
-if (searchButton) {
-    searchButton.addEventListener('click', searchClients);
-}
+            // Load existing appointments on page load
+            fetchAndDisplayAppointments();
+        });
 
         // Add event listener to format phone number while typing
 function formatPhoneNumber(input) {
@@ -334,8 +363,8 @@ function formatDateDefault(date) {
             const formattedDate = date.toLocaleDateString('en-US', options);
             document.getElementById('currentDay').textContent = `Current Day: ${formattedDate}`;
         }
-
-        async function fetchAndDisplayAppointments() {
+       // Function to fetch and display appointments
+async function fetchAndDisplayAppointments() {
     const selectedDate = document.getElementById('date').value;
 
     console.log('Fetching Appointments for Date:', selectedDate);
@@ -381,6 +410,13 @@ function formatDateDefault(date) {
 
                     // Append the time slot div to the container
                     containerDiv.appendChild(timeSlotDiv);
+                    // Create a delete button for the appointment
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.addEventListener('click', () => deleteAppointment(appointment.appointment_id));
+
+                    // Append the delete button to the container
+                    containerDiv.appendChild(deleteButton);
 
                     // Append the container div after the button's parent
                     parentElement.parentNode.insertBefore(containerDiv, parentElement.nextSibling);
@@ -388,7 +424,7 @@ function formatDateDefault(date) {
 
                 // Create a div for the appointment title
                 const appointmentDiv = document.createElement('div');
-                appointmentDiv.textContent = appointment.title;
+                appointmentDiv.textContent = `${appointment.title}`;
 
                 // Append the div to the container
                 containerDiv.appendChild(appointmentDiv);
@@ -411,6 +447,7 @@ function formatDateDefault(date) {
         console.error('Error loading appointments:', error);
     }
 }
+
 async function searchClients() {
     // Get the search input element and search results container
     const searchInput = document.getElementById('clientPhoneNumber');
