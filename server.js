@@ -42,6 +42,10 @@ app.get('/create', (req, res) => {
   res.render('create');
 });
 
+// Create customer-profile page route
+app.get('/create-profile', (req, res) => {
+  res.render('create-profile');
+});
 // Function to fetch client and dog information by IDs
 async function fetchClientAndDogInfoByIds(clientId, dogId) {
   const query = `
@@ -80,6 +84,35 @@ app.get('/fetch-client-dog-info', async (req, res) => {
     }
 });
 
+// POST route to handle profile creation
+app.post('/create-profile', async (req, res) => {
+  try {
+    const formData = req.body;
+
+    // Insert client information
+    const insertClientQuery = 'INSERT INTO clients (firstname, lastname, phone_number) VALUES (?, ?, ?)';
+    const [clientResult] = await db.query(insertClientQuery, [formData.firstname, formData.lastname, formData.phone_number]);
+
+    if (clientResult.affectedRows === 1) {
+      const clientId = clientResult.insertId;
+
+      // Insert dog information with the retrieved client ID
+      const insertDogQuery = 'INSERT INTO dogs (client_id, dog_name, breed) VALUES (?, ?, ?)';
+      const [dogResult] = await db.query(insertDogQuery, [clientId, formData.dog_name, formData.breed]);
+
+      if (dogResult.affectedRows === 1) {
+        res.status(200).send('Profile created successfully!');
+      } else {
+        res.status(500).send('Error creating profile. Please try again.');
+      }
+    } else {
+      res.status(500).send('Error creating profile. Please try again.');
+    }
+  } catch (error) {
+    console.error('Error creating profile:', error);
+    res.status(500).send('Error creating profile. Please try again.');
+  }
+});
 
 app.get('/customer-profile', async (req, res) => {
   try {

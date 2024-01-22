@@ -1,0 +1,71 @@
+<!-- create-profile.ejs -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Profile</title>
+</head>
+<body>
+  <h1>Create Profile</h1>
+
+  <!-- Your form for collecting client and dog information -->
+  <form id="createProfileForm">
+    <!-- Client Information -->
+    <label for="firstname">First Name:</label>
+    <input type="text" id="firstname" name="firstname" required>
+
+    <label for="lastname">Last Name:</label>
+    <input type="text" id="lastname" name="lastname" required>
+
+    <label for="phone_number">Phone Number:</label>
+    <input type="text" id="phone_number" name="phone_number" required>
+
+    <!-- Dog Information -->
+    <label for="dog_name">Dog Name:</label>
+    <input type="text" id="dog_name" name="dog_name" required>
+
+    <label for="breed">Breed:</label>
+    <input type="text" id="breed" name="breed" required>
+
+    <button type="button" onclick="createProfile()">Create Profile</button>
+  </form>
+
+  <!-- Display result or error message -->
+  <div id="resultContainer"></div>
+
+  <script>
+    async function createProfile() {
+      const formData = {
+        firstname: document.getElementById('firstname').value,
+        lastname: document.getElementById('lastname').value,
+        phone_number: document.getElementById('phone_number').value,
+        dog_name: document.getElementById('dog_name').value,
+        breed: document.getElementById('breed').value
+      };
+
+      try {
+        const response = await fetch('/create-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+          const resultContainer = document.getElementById('resultContainer');
+          resultContainer.innerHTML = 'Profile created successfully!';
+        } else {
+          const resultContainer = document.getElementById('resultContainer');
+          resultContainer.innerHTML = 'Error creating profile. Please try again.';
+        }
+      } catch (error) {
+        console.error('Error creating profile:', error);
+        alert('Error creating profile. Please try again.');
+      }
+    }
+  </script>
+</body>
+</html>

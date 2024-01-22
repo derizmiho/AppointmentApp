@@ -1,65 +1,153 @@
 <!-- Display search input for client phone numbers above Next Day buttons -->
 <div class="search-container">
-  <label for="clientPhoneNumber">Enter Client Phone Number:</label>
-  <input type="text" id="clientPhoneNumber" class="search-input" placeholder="Enter phone number" oninput="formatPhoneNumber(this)">
-  <button onclick="searchClients()">Search</button>
-</div>
+    <label for="clientPhoneNumber">Enter Client Phone Number:</label>
+    <input type="text" id="clientPhoneNumber" class="search-input" placeholder="Enter phone number" oninput="formatPhoneNumber(this)">
+    <button onclick="searchClients()">Search</button>
+  </div>
+  
+  <!-- Display user and pet information, appointment history, preferences, and notifications -->
+  <div id="userProfileContainer" style="display: none;">
+    <!-- User Information -->
+    <div id="userInfo">
+      <h2>User Information</h2>
+      <p>Name: <span id="userName"></span></p>
+      <p>Phone Number: <span id="userPhoneNumber"></span></p>
+      <!-- Add more user information fields as needed -->
+    </div>
+  
+    <!-- Pet Information -->
+    <div id="petInfo">
+      <h2>Pet Information</h2>
+      <p>Pet Name: <span id="petName"></span></p>
+      <p>Breed: <span id="petBreed"></span></p>
+      <p>Age: <span id="petAge"></span></p>
+      <p>Special Instructions: <span id="specialInstructions"></span></p>
+      <!-- Add more pet information fields as needed -->
+    </div>
+  
+    <!-- Appointment History -->
+    <div id="appointmentHistory">
+      <h2>Appointment History</h2>
+      <!-- Display past appointments here -->
+      <ul id="pastAppointments"></ul>
+    </div>
 
-<!-- Display client and dog information here -->
-<div id="clientInfoContainer">
-  <!-- Content will be dynamically updated here -->
-</div>
-
-<script>
-   // Add event listener to format phone number while typing
-function formatPhoneNumber(input) {
-    const cursorPosition = input.selectionStart;
-    const numericValue = input.value.replace(/\D/g, '');
-    const limitedNumericValue = numericValue.slice(0, 10);
-
-    let formattedNumber = '';
-    let formattedCursorPosition = cursorPosition;
-
-    for (let i = 0; i < limitedNumericValue.length; i++) {
+    <!-- Reminders and Notifications -->
+    <div id="notifications">
+      <h2>Reminders and Notifications</h2>
+      <label>
+        <input type="checkbox" id="appointmentReminders"> Receive appointment reminders
+      </label>
+    </div>
+  </div>
+  
+  <script>
+    // Add event listener to format phone number while typing
+    function formatPhoneNumber(input) {
+      const cursorPosition = input.selectionStart;
+      const numericValue = input.value.replace(/\D/g, '');
+      const limitedNumericValue = numericValue.slice(0, 10);
+  
+      let formattedNumber = '';
+      let formattedCursorPosition = cursorPosition;
+  
+      for (let i = 0; i < limitedNumericValue.length; i++) {
         if (i === 3 || i === 6) {
-            formattedNumber += '-';
-            if (cursorPosition > i) {
-                formattedCursorPosition++;
-            }
+          formattedNumber += '-';
+          if (cursorPosition > i) {
+            formattedCursorPosition++;
+          }
         }
         formattedNumber += limitedNumericValue[i];
-    }
-
-    // Update the global variable clientPhoneNumber
-    clientPhoneNumber = formattedNumber;
-
-    input.value = formattedNumber;
-    input.setSelectionRange(formattedCursorPosition, formattedCursorPosition);
-}
-
-async function searchClients() {
-  const phoneNumber = document.getElementById('clientPhoneNumber').value;
+      }
   
-  try {
-      const response = await fetch(`/get-client-profile?phoneNumber=${phoneNumber}`);
-      const data = await response.json();
-
-      if (response.ok) {
-          // Display client and dog information
-          const clientInfoContainer = document.getElementById('clientInfoContainer');
-          clientInfoContainer.innerHTML = `
-              <h2>${data.firstname} ${data.lastname}</h2>
-              <p>Phone Number: ${data.phone_number}</p>
-              <!-- Display other client and dog information as needed -->
-          `;
-      } else {
+      // Update the global variable clientPhoneNumber
+      clientPhoneNumber = formattedNumber;
+  
+      input.value = formattedNumber;
+      input.setSelectionRange(formattedCursorPosition, formattedCursorPosition);
+    }
+  
+    async function searchClients() {
+      const phoneNumber = document.getElementById('clientPhoneNumber').value;
+  
+      try {
+        const response = await fetch(`/get-client-profile?phoneNumber=${phoneNumber}`);
+        const data = await response.json();
+  
+        if (response.ok) {
+          // Display user profile based on fetched data
+          updateUserProfile(data);
+        } else {
           // Handle error case
           console.error('Error:', data.error);
           alert('Error fetching client information');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error fetching client information');
       }
-  } catch (error) {
-      console.error('Error:', error);
-      alert('Error fetching client information');
-  }
+    }
+  
+    // Function to update the user profile based on fetched data
+    function updateUserProfile(data) {
+  const userProfileContainer = document.getElementById('userProfileContainer');
+  const userName = document.getElementById('userName');
+  const userPhoneNumber = document.getElementById('userPhoneNumber');
+  const petName = document.getElementById('petName');
+  const petBreed = document.getElementById('petBreed');
+  const petAge = document.getElementById('petAge');
+  const specialInstructions = document.getElementById('specialInstructions');
+  const pastAppointments = document.getElementById('pastAppointments');
+  const appointmentReminders = document.getElementById('appointmentReminders');
+  const petInfoContainer = document.getElementById('petInfo');
+
+  // Update user information
+  userName.textContent = `${data.firstname} ${data.lastname}`;
+  userPhoneNumber.textContent = data.phone_number;
+
+  // Update pet information
+  petInfoContainer.innerHTML = ''; // Clear previous content
+
+if (data.dogs && Array.isArray(data.dogs)) {
+  data.dogs.forEach((dog, index) => {
+    const dogInfoDiv = document.createElement('div');
+    dogInfoDiv.innerHTML = `
+      <h2>Dog ${index + 1} Information</h2>
+      <p>Pet Name: ${dog.dog_name}</p>
+      <p>Breed: ${dog.breed}</p>
+      <!-- Add more dog information fields as needed -->
+    `;
+    petInfoContainer.appendChild(dogInfoDiv);
+  });
+} else {
+  // Handle the case where no dog information is available
+  petInfoContainer.innerHTML = 'No pet information available.';
 }
-</script>
+  // Check if appointments data exists before iterating
+  if (data.appointments && Array.isArray(data.appointments)) {
+    // Update appointment history
+    pastAppointments.innerHTML = '';
+    data.appointments.forEach(appointment => {
+      const li = document.createElement('li');
+      li.textContent = `Date: ${appointment.date}, Service: ${appointment.service}, Groomer: ${appointment.groomer}`;
+      pastAppointments.appendChild(li);
+    });
+  } else {
+    // Handle the case where appointments data is not available
+    pastAppointments.innerHTML = 'No appointment history available.';
+  }
+
+  // Update appointment preferences
+ // preferredGroomer.textContent = data.preferred_groomer;
+  //preferredTimeSlots.textContent = data.preferred_time_slots;
+ // preferredServices.textContent = data.preferred_services;
+
+  // Update reminders and notifications
+  appointmentReminders.checked = data.receive_appointment_reminders;
+
+  // Display the user profile container
+  userProfileContainer.style.display = 'block';
+}
+  </script>
+  
