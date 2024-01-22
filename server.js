@@ -276,14 +276,8 @@ app.get('/load-appointments', async (req, res) => {
         console.log('Load Appointments - Date:', date, 'Week:', week);
         query = 'SELECT * FROM appointments WHERE DATE(date) = ?';
         console.log('After executing load-appointments query');
-
-      } else if (week) {
-        // Fetch appointments for a specific week
-        query = 'SELECT * FROM appointments WHERE WEEK(date) = ?';
-      } else {
-        // Fetch all appointments
-        query = 'SELECT * FROM appointments';
-      }
+    }
+    
 
       const [appointments] = await connection.query(query, [date || week]);
 
@@ -312,20 +306,24 @@ app.get('/get-appointments', (req, res) => {
 
   res.json(appointments);
 });
-// Usage in your server code
+// Example in Node.js with MySQL2 library
 app.delete('/cancel-appointment/:id', (req, res) => {
   const appointmentId = req.params.id;
 
+  console.log('Canceling appointment:', appointmentId);
+
   // Implement the logic to cancel the appointment (e.g., update the database)
   db.query('DELETE FROM appointments WHERE appointment_id = ?', [appointmentId], (err, result) => {
-    if (err) {
-      console.error('Error canceling appointment:', err);
-      res.status(500).json({ error: 'Internal Server Error' });
-    } else {
-      res.json({ message: 'Appointment canceled successfully' });
-    }
+      if (err) {
+          console.error('Error canceling appointment:', err);
+          res.status(500).json({ error: 'Internal Server Error' });
+      } else {
+          res.json({ message: 'Appointment canceled successfully' });
+      }
   });
 });
+
+
 
 
 

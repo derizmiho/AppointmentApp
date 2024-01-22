@@ -2,6 +2,29 @@
 <html lang="en">
 <head>
     <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            margin-top: 10px;
+        }
         .has-appointment-container {
     display: none;
 }
@@ -38,7 +61,14 @@
         <button onclick="switchDay(-1)">Previous Day</button>
         <button onclick="switchDay(1)">Next Day</button>
     </div>
-
+ <!-- Add a simple modal for confirmation -->
+ <div id="confirmationModal" class="modal">
+    <div class="modal-content">
+        <p id="confirmationMessage"></p>
+        <button id="confirmYes">Yes</button>
+        <button id="confirmNo">No</button>
+    </div>
+</div>
     <!-- Display search input for client phone numbers above Next Day buttons -->
     <div class="search-container">
         <label for="clientPhoneNumber">Enter Client Phone Number:</label>
@@ -94,8 +124,29 @@
 
 <!-- JavaScript for create page -->
 <script>
+    
+  async function showConfirmationDialog(message) {
+            return new Promise(resolve => {
+                const confirmationModal = document.getElementById('confirmationModal');
+                const confirmationMessage = document.getElementById('confirmationMessage');
+                const confirmYes = document.getElementById('confirmYes');
+                const confirmNo = document.getElementById('confirmNo');
 
-// ... (existing code)
+                confirmationMessage.textContent = message;
+
+                confirmYes.onclick = () => {
+                    confirmationModal.style.display = 'none';
+                    resolve(true);
+                };
+
+                confirmNo.onclick = () => {
+                    confirmationModal.style.display = 'none';
+                    resolve(false);
+                };
+
+                confirmationModal.style.display = 'block';
+            });
+        }
 
 // Update the scheduleAppointment function
 async function scheduleAppointment(selectedTime) {
@@ -157,6 +208,9 @@ async function scheduleAppointment(selectedTime) {
             containerDiv.appendChild(timeSlotDiv);
             containerDiv.appendChild(appointmentDiv);
 
+            // Set the appointmentId as a data attribute on the container div
+            containerDiv.setAttribute('data-appointment-id', result.appointmentId);
+
             // Replace the time slot button with the container
             timeSlotButton.parentNode.replaceChild(containerDiv, timeSlotButton);
 
@@ -214,52 +268,75 @@ async function insertAppointmentIntoDatabase(appointmentData) {
         return { success: false, message: 'Error inserting appointment into the database' };
     }
 }
-async function deleteAppointment(timeSlot, clientId, dogId) {
-    const confirmation = confirm('Are you sure you want to cancel this appointment?');
 
-    if (confirmation) {
-        try {
-            const response = await fetch(`/cancel-appointment/${timeSlot}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+function confirmModalFunction() {
+    return new Promise((resolve) => {
+        const userConfirmed = window.confirm('Are you sure you want to cancel this appointment?');
+        resolve(userConfirmed);
+    });
+}
 
-            const result = await response.json();
-            console.log(result.message); // Log the server response message
+async function deleteAppointment(containerDiv, appointmentId) {
+    try {
+        // Remove the container div directly from the UI
+        containerDiv.remove();
 
-            // If the deletion was successful, remove the appointment info from the UI
-            if (response.ok) {
-                const timeSlotId = `appointment-${timeSlot.replace(':', '')}`;
-                const containerDivId = `appointment-info-${timeSlotId.replace(':', '')}`;
-                const containerDiv = document.getElementById(containerDivId);
+        // Perform the deletion on the server
+        const response = await fetch(`/cancel-appointment/${appointmentId}`, { method: 'DELETE' });
 
-                // Remove the appointment info container from the UI
-                if (containerDiv) {
-                    containerDiv.parentNode.removeChild(containerDiv);
-                }
-
-                // Remove the "has-appointment" class from the time slot button
-                const timeSlotButton = document.getElementById(timeSlotId);
-                if (timeSlotButton) {
-                    timeSlotButton.classList.remove('has-appointment');
-                }
-
-                console.log('Appointment deleted successfully from the UI.');
-            }
-        } catch (error) {
-            console.error('Error canceling appointment:', error);
-            // Handle errors as needed
+        if (!response.ok) {
+            console.error('Error deleting appointment on the server.');
         }
-    } else {
-        console.log('Deletion canceled by user.');
+    } catch (error) {
+        console.error('Error deleting appointment:', error);
     }
 }
 
 
+function deleteButtonClick(timeSlot) {
+    const deleteButton = document.querySelector(`button[data-time="${timeSlot}"]`);
 
+    // Get the parent container of the delete button
+    const containerDiv = deleteButton ? deleteButton.closest('.time-slot-container') : null;
 
+    console.log('Delete button:', deleteButton);
+    console.log('Container div:', containerDiv);
+
+    if (containerDiv) {
+        // Check if appointmentId is available and a valid integer
+        const appointmentIdString = containerDiv.dataset.appointmentId;
+        const appointmentId = parseInt(appointmentIdString, 10);
+
+        if (!isNaN(appointmentId) && Number.isInteger(appointmentId)) {
+            console.log('Parsed appointmentId:', appointmentId);
+            deleteAppointment(containerDiv, appointmentId);
+        } else {
+            console.error('Invalid or undefined appointmentId found:', appointmentIdString);
+            // Log additional information about the containerDiv
+            console.log('Container div dataset:', containerDiv.dataset);
+            // Handle the error as needed
+        }
+    } else {
+        console.log('Container div not found.');
+    }
+}
+
+// Function to update remaining UI elements
+function updateRemainingUI(appointmentId) {
+    // Generate the containerDivId based on the appointmentId
+    const containerDivId = `appointment-info-${appointmentId}`;
+
+    // Get the container div element
+    const containerDiv = document.getElementById(containerDivId);
+
+    if (containerDiv && containerDiv.parentNode) {
+        // Remove the container div from its parent
+        containerDiv.parentNode.removeChild(containerDiv);
+        console.log(`Appointment info with ID ${appointmentId} removed successfully from the UI.`);
+    } else {
+        console.log(`Container div with ID ${containerDivId} not found or already removed from the UI.`);
+    }
+}
 
         function loadPetInformation(selectedDog) {
             console.log('Selected Dog Information:', selectedDog);
@@ -383,8 +460,7 @@ function formatDateDefault(date) {
             const formattedDate = date.toLocaleDateString('en-US', options);
             document.getElementById('currentDay').textContent = `Current Day: ${formattedDate}`;
         }
-       // Function to fetch and display appointments
-async function fetchAndDisplayAppointments() {
+        async function fetchAndDisplayAppointments() {
     const selectedDate = document.getElementById('date').value;
 
     console.log('Fetching Appointments for Date:', selectedDate);
@@ -401,58 +477,71 @@ async function fetchAndDisplayAppointments() {
 
         // Display the appointments on the page
         appointments.forEach(appointment => {
-            const timeSlotId = `appointment-${appointment.time_slot.replace(':', '')}`;
-            const timeSlotElement = document.getElementById(timeSlotId);
+            // Ensure appointment is valid
+            if (appointment && appointment.appointment_id && !isNaN(appointment.appointment_id) && Number.isInteger(appointment.appointment_id)) {
+    const appointmentId = appointment.appointment_id;
+                const timeSlotId = `appointment-${appointment.time_slot.replace(':', '')}`;
+                const timeSlotElement = document.getElementById(timeSlotId);
 
-            console.log('Processing time slot:', timeSlotId);
-            console.log('Time slot element:', timeSlotElement);
+                console.log('Processing time slot:', timeSlotId);
+                console.log('Time slot element:', timeSlotElement);
 
-            // Add a class to the time slot button indicating it has an appointment
-            if (timeSlotElement) {
-                timeSlotElement.classList.add('has-appointment');
+                // Add a class to the time slot button indicating it has an appointment
+                if (timeSlotElement) {
+                    timeSlotElement.classList.add('has-appointment');
 
-                // Create a container div for appointment info
-                const containerDivId = `appointment-info-${timeSlotId.replace(':', '')}`;
-                let containerDiv = document.getElementById(containerDivId);
+                    // Create or get the container div for appointment info
+                    const containerDivId = `appointment-info-${appointmentId}`;
+                    let containerDiv = document.getElementById(containerDivId);
 
-                if (!containerDiv) {
-                    // Get the parent of the time slot element (button's parent)
-                    const parentElement = timeSlotElement.parentNode;
+                    if (!containerDiv) {
+                        // Create the container div if not found
+                        containerDiv = document.createElement('div');
+                        containerDiv.id = containerDivId;
+                        containerDiv.className = 'appointment-info-container';
+                        containerDiv.dataset.appointmentId = appointmentId;  // Include appointment ID in dataset
 
-                    // Create the container div and append it after the button's parent
-                    containerDiv = document.createElement('div');
-                    containerDiv.id = containerDivId;
-                    containerDiv.className = 'appointment-info-container';
+                        // Create a div for the time slot
+                        const timeSlotDiv = document.createElement('div');
+                        timeSlotDiv.textContent = appointment.time_slot;
 
-                    // Create a div for the time slot
-                    const timeSlotDiv = document.createElement('div');
-                    timeSlotDiv.textContent = appointment.time_slot;
+                        // Append the time slot div to the container
+                        containerDiv.appendChild(timeSlotDiv);
 
-                    // Append the time slot div to the container
-                    containerDiv.appendChild(timeSlotDiv);
-                    // Create a delete button for the appointment
-                    const deleteButton = document.createElement('button');
-                    deleteButton.textContent = 'Delete';
-                    deleteButton.addEventListener('click', () => deleteAppointment(appointment.appointment_id));
+                        // Create a delete button for the appointment
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.classList.add('delete-button');
 
-                    // Append the delete button to the container
-                    containerDiv.appendChild(deleteButton);
+                        // Add click event listener to the delete button
+                        deleteButton.addEventListener('click', async () => {
+    console.log('Delete button clicked!');
+    const appointmentId = containerDiv.dataset.appointmentId;
+    await deleteAppointment(containerDiv, appointmentId);
+});
+                        console.log('Delete button:', deleteButton);
 
-                    // Append the container div after the button's parent
-                    parentElement.parentNode.insertBefore(containerDiv, parentElement.nextSibling);
+                        // Append the delete button to the container
+                        containerDiv.appendChild(deleteButton);
+
+                        // Append the container div after the button's parent
+                        timeSlotElement.parentNode.parentNode.insertBefore(containerDiv, timeSlotElement.parentNode.nextSibling);
+                    }
+
+                    // Create a div for the appointment title
+                    const appointmentDiv = document.createElement('div');
+                    appointmentDiv.textContent = `${appointment.title}`;
+
+                    // Append the div to the container
+                    containerDiv.appendChild(appointmentDiv);
+
+                    // Add a class to the time slot container indicating it has appointment info
+                    timeSlotElement.parentNode.classList.add('has-appointment-container');
+
+                    console.log('Updated time slot:', timeSlotId);
                 }
-
-                // Create a div for the appointment title
-                const appointmentDiv = document.createElement('div');
-                appointmentDiv.textContent = `${appointment.title}`;
-
-                // Append the div to the container
-                containerDiv.appendChild(appointmentDiv);
-
-                // Add a class to the time slot container indicating it has appointment info
-                timeSlotElement.parentNode.classList.add('has-appointment-container');
-
-                console.log('Updated time slot:', timeSlotId);
+            } else {
+                console.error('Invalid appointment:', appointment);
             }
         });
 
@@ -462,7 +551,6 @@ async function fetchAndDisplayAppointments() {
         if (clientAndDogInfo) {
             displayClientDetails();
         }
-
     } catch (error) {
         console.error('Error loading appointments:', error);
     }
