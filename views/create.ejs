@@ -147,6 +147,16 @@
                 confirmationModal.style.display = 'block';
             });
         }
+        async function fetchClientAndDogInfo(clientId, dogId) {
+    try {
+        const response = await fetch(`/fetch-client-dog-info?clientId=${clientId}&dogId=${dogId}`);
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Error fetching client and dog information:', error);
+        throw error;
+    }
+}
 
 // Update the scheduleAppointment function
 async function scheduleAppointment(selectedTime) {
@@ -170,6 +180,8 @@ async function scheduleAppointment(selectedTime) {
     };
 
     try {
+        console.log('Sending appointmentData to server:', appointmentData);
+
         // Send a POST request to the server to create a new appointment
         const response = await fetch('/create-appointment', {
             method: 'POST',
@@ -179,46 +191,85 @@ async function scheduleAppointment(selectedTime) {
             body: JSON.stringify(appointmentData),
         });
 
+        console.log('Request sent to /create-appointment');
+
         const result = await response.json();
         console.log('Server Response (scheduleAppointment):', result);
         console.log('Appointment creation result:', result);
 
-        // Fetch additional information (lastname, firstname, dog_name) based on client_id and dog_id
-        const updatedClientAndDogInfo = await fetchClientAndDogInfo(appointmentData.client_id, appointmentData.dog_id);
+        if (result.success) {
+            // Fetch additional information (lastname, firstname, dog_name) based on client_id and dog_id
+            const updatedClientAndDogInfo = await fetchClientAndDogInfo(appointmentData.client_id, appointmentData.dog_id);
 
-        // Update the UI to reflect the newly scheduled appointment
-        const timeSlotButton = document.querySelector(`button[data-time="${selectedTime}"]`);
-        if (timeSlotButton) {
-            // Create a new div for the appointment with inline styles
-            const containerDiv = document.createElement('div');
-            containerDiv.style.display = 'flex';
-            containerDiv.style.alignItems = 'center';
+            console.log('Updated client and dog information:', updatedClientAndDogInfo);
 
-            // Create a div for the time slot
-            const timeSlotDiv = document.createElement('div');
-            timeSlotDiv.textContent = selectedTime;
+            // Log the appointment to history
+            try {
+                const historyLogResponse = await fetch('/log-appointment-to-history', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        appointment_id: result.appointmentId,
+                        client_id: appointmentData.client_id,
+                        dog_id: appointmentData.dog_id,
+                        time_slot: appointmentData.time_slot,
+                        date: appointmentData.date,
+                    }),
+                });
 
-            // Create a div for the appointment title
-            const appointmentDiv = document.createElement('div');
-            // Set the text content for the appointmentDiv
-            appointmentDiv.textContent = `${updatedClientAndDogInfo.lastname}, ${updatedClientAndDogInfo.firstname} - ${updatedClientAndDogInfo.dog_name}`;
-            appointmentDiv.style.marginLeft = '10px'; // Adjust the margin as needed
+                console.log('Request sent to /log-appointment-to-history');
 
-            // Append both divs to the container
-            containerDiv.appendChild(timeSlotDiv);
-            containerDiv.appendChild(appointmentDiv);
+                if (!historyLogResponse.ok) {
+                    console.error('Error in log-appointment-to-history request:', historyLogResponse.statusText);
+                    // Handle the error as needed
+                } else {
+                    const historyLogResult = await historyLogResponse.json();
+                    console.log('Server Response (log-appointment-to-history):', historyLogResult);
+                }
 
-            // Set the appointmentId as a data attribute on the container div
-            containerDiv.setAttribute('data-appointment-id', result.appointmentId);
+                // Update the UI to reflect the newly scheduled appointment
+                const timeSlotButton = document.querySelector(`button[data-time="${selectedTime}"]`);
+                if (timeSlotButton) {
+                    // Create a new div for the appointment with inline styles
+                    const containerDiv = document.createElement('div');
+                    containerDiv.style.display = 'flex';
+                    containerDiv.style.alignItems = 'center';
 
-            // Replace the time slot button with the container
-            timeSlotButton.parentNode.replaceChild(containerDiv, timeSlotButton);
+                    // Create a div for the time slot
+                    const timeSlotDiv = document.createElement('div');
+                    timeSlotDiv.textContent = selectedTime;
 
-            // Update the URL with the selected date
-            const currentDateInput = document.getElementById('date');
-            const searchParams = new URLSearchParams(window.location.search);
-            searchParams.set('date', currentDateInput.value);
-            history.replaceState(null, null, '?' + searchParams.toString());
+                    // Create a div for the appointment title
+                    const appointmentDiv = document.createElement('div');
+                    // Set the text content for the appointmentDiv
+                    appointmentDiv.textContent = `${updatedClientAndDogInfo.lastname}, ${updatedClientAndDogInfo.firstname} - ${updatedClientAndDogInfo.dog_name}`;
+                    appointmentDiv.style.marginLeft = '10px'; // Adjust the margin as needed
+
+                    // Append both divs to the container
+                    containerDiv.appendChild(timeSlotDiv);
+                    containerDiv.appendChild(appointmentDiv);
+
+                    // Set the appointmentId as a data attribute on the container div
+                    containerDiv.setAttribute('data-appointment-id', result.appointmentId);
+
+                    // Replace the time slot button with the container
+                    timeSlotButton.parentNode.replaceChild(containerDiv, timeSlotButton);
+
+                    // Update the URL with the selected date
+                    const currentDateInput = document.getElementById('date');
+                    const searchParams = new URLSearchParams(window.location.search);
+                    searchParams.set('date', currentDateInput.value);
+                    history.replaceState(null, null, '?' + searchParams.toString());
+                }
+            } catch (historyLogError) {
+                console.error('Error in log-appointment-to-history request:', historyLogError);
+                // Handle the error as needed
+            }
+        } else {
+            console.error('Error scheduling appointment:', result.message);
+            // Handle errors as needed
         }
     } catch (error) {
         console.error('Error scheduling appointment:', error);
@@ -226,17 +277,6 @@ async function scheduleAppointment(selectedTime) {
     }
 }
 
-
-async function fetchClientAndDogInfo(clientId, dogId) {
-    try {
-        const response = await fetch(`/fetch-client-dog-info?clientId=${clientId}&dogId=${dogId}`);
-        const result = await response.json();
-        return result;
-    } catch (error) {
-        console.error('Error fetching client and dog information:', error);
-        throw error;
-    }
-}
 
 
 // Assuming you have a function to insert the appointment into the database
@@ -258,6 +298,16 @@ async function insertAppointmentIntoDatabase(appointmentData) {
 
         // Assuming the insertion is successful
         if (result.affectedRows === 1) {
+            console.log('Appointment inserted into the database successfully.');
+
+            // Log the appointment to the history
+            const logResult = await logAppointmentToHistory(result.insertId, client_id, dog_id, time_slot, formattedDate);
+            if (logResult.success) {
+                console.log('Appointment logged to history successfully.');
+            } else {
+                console.error('Error logging appointment to history:', logResult.message);
+            }
+
             return { success: true };
         } else {
             console.error('Unexpected number of affected rows:', result.affectedRows);
@@ -266,6 +316,37 @@ async function insertAppointmentIntoDatabase(appointmentData) {
     } catch (error) {
         console.error('Error inserting appointment into the database:', error);
         return { success: false, message: 'Error inserting appointment into the database' };
+    }
+}
+
+// Function to log the appointment to history
+async function logAppointmentToHistory(appointmentId, client_id, dog_id, time_slot, date) {
+    try {
+        console.log('Attempting to log appointment to history...');
+
+        // Your MySQL query to insert the appointment into the history table
+        const logQuery = `
+            INSERT INTO appointment_history (appointment_id, client_id, dog_id, time_slot, date)
+            VALUES (?, ?, ?, ?, ?)
+        `;
+
+        // Execute the query with the provided data
+        const [logResult] = await db.query(logQuery, [appointmentId, client_id, dog_id, time_slot, date]);
+
+        // Log the result for debugging
+        console.log('Result of logQuery:', logResult);
+
+        // Assuming the insertion is successful
+        if (logResult.affectedRows === 1) {
+            console.log('Appointment logged to history successfully.');
+            return { success: true };
+        } else {
+            console.error('Unexpected number of affected rows in history log:', logResult.affectedRows);
+            return { success: false, message: 'Error logging appointment to history' };
+        }
+    } catch (error) {
+        console.error('Error logging appointment to history:', error);
+        return { success: false, message: 'Error logging appointment to history' };
     }
 }
 

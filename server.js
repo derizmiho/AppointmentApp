@@ -59,58 +59,111 @@ async function fetchClientAndDogInfoByIds(clientId, dogId) {
   return result[0]; // Assuming you expect only one result
 }
 
+// Inside your server-side code
 app.get('/fetch-client-dog-info', async (req, res) => {
-    try {
-        const clientId = req.query.clientId;
-        const dogId = req.query.dogId;
+  try {
+      const clientId = req.query.clientId;
+      const dogId = req.query.dogId;
 
-        // Fetch client and dog information from the database
-        const [result] = await db.query(`
-            SELECT clients.lastname, clients.firstname, dogs.dog_name
-            FROM clients
-            LEFT JOIN dogs ON clients.client_id = dogs.client_id
-            WHERE clients.client_id = ? AND dogs.dog_id = ?;
-        `, [clientId, dogId]);
+      // Fetch client and dog information from the database
+      const [result] = await db.query(`
+          SELECT clients.lastname, clients.firstname, dogs.dog_name
+          FROM clients
+          LEFT JOIN dogs ON clients.client_id = dogs.client_id
+          WHERE clients.client_id = ? AND dogs.dog_id = ?;
+      `, [clientId, dogId]);
 
-        if (result.length > 0) {
-            const clientAndDogInfo = result[0];
-            res.json(clientAndDogInfo);
-        } else {
-            res.status(404).json({ error: 'Client and dog information not found' });
-        }
-    } catch (error) {
-        console.error('Error fetching client and dog information:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+      if (result.length > 0) {
+          const clientAndDogInfo = result[0];
+          res.json(clientAndDogInfo);
+      } else {
+          res.status(404).json({ error: 'Client and dog information not found' });
+      }
+  } catch (error) {
+      console.error('Error fetching client and dog information:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+app.post('/log-appointment-to-history', async (req, res) => {
+  try {
+    console.log('Received request to log appointment to history:', req.body);
+
+    const { appointment_id, client_id, dog_id, time_slot, date } = req.body;
+    console.log('Received appointment_id:', appointment_id);
+
+    console.log('Logging appointment to history with data:', {
+      appointment_id,
+      client_id,
+      dog_id,
+      time_slot,
+      date,
+    });
+
+    // Your MySQL query to insert the appointment into the history table
+    const logQuery = `
+        INSERT INTO appointment_history (appointment_id, client_id, dog_id, time_slot, date)
+        VALUES (?, ?, ?, ?, ?)
+    `;
+
+    // Execute the query with the provided data
+    const [logResult] = await db.query(logQuery, [appointment_id, client_id, dog_id, time_slot, date]);
+
+    // Assuming the insertion is successful
+    if (logResult.affectedRows === 1) {
+      console.log('Appointment logged to history successfully.');
+      res.json({ success: true });
+    } else {
+      console.error('Unexpected number of affected rows in history log:', logResult.affectedRows);
+      res.status(500).json({ success: false, message: 'Error logging appointment to history' });
     }
+  } catch (error) {
+    console.error('Error logging appointment to history:', error);
+    res.status(500).json({ success: false, message: 'Error logging appointment to history' });
+  }
 });
 
 // POST route to handle profile creation
 app.post('/create-profile', async (req, res) => {
   try {
-    const formData = req.body;
+      const formData = req.body;
 
-    // Insert client information
-    const insertClientQuery = 'INSERT INTO clients (firstname, lastname, phone_number) VALUES (?, ?, ?)';
-    const [clientResult] = await db.query(insertClientQuery, [formData.firstname, formData.lastname, formData.phone_number]);
+      // Insert client information
+      const insertClientQuery = 'INSERT INTO clients (firstname, lastname, phone_number) VALUES (?, ?, ?)';
+      const [clientResult] = await db.query(insertClientQuery, [formData.firstname, formData.lastname, formData.phone_number]);
 
-    if (clientResult.affectedRows === 1) {
-      const clientId = clientResult.insertId;
+      if (clientResult.affectedRows === 1) {
+          const clientId = clientResult.insertId;
 
-      // Insert dog information with the retrieved client ID
-      const insertDogQuery = 'INSERT INTO dogs (client_id, dog_name, breed) VALUES (?, ?, ?)';
-      const [dogResult] = await db.query(insertDogQuery, [clientId, formData.dog_name, formData.breed]);
+          // Insert dog information with the retrieved client ID
+          const insertDogQuery = 'INSERT INTO dogs (client_id, dog_name, breed) VALUES (?, ?, ?)';
+          const [dogResult] = await db.query(insertDogQuery, [clientId, formData.dog_name, formData.breed]);
 
-      if (dogResult.affectedRows === 1) {
-        res.status(200).send('Profile created successfully!');
+          if (dogResult.affectedRows === 1) {
+              // Insert appointment information
+              const insertAppointmentQuery = 'INSERT INTO appointments (client_id, dog_id, time_slot, date) VALUES (?, ?, ?, ?)';
+              const [appointmentResult] = await db.query(insertAppointmentQuery, [clientId, dogResult.insertId, '09:00', '2024-01-23']);
+
+              if (appointmentResult.affectedRows === 1) {
+                  const appointmentId = appointmentResult.insertId;
+
+                  // Send the response with the success status, message, and appointmentId
+                  res.status(200).json({
+                      success: true,
+                      message: 'Profile created successfully!',
+                      appointmentId: appointmentId,
+                  });
+              } else {
+                  res.status(500).json({ success: false, message: 'Error creating profile. Please try again.' });
+              }
+          } else {
+              res.status(500).json({ success: false, message: 'Error creating profile. Please try again.' });
+          }
       } else {
-        res.status(500).send('Error creating profile. Please try again.');
+          res.status(500).json({ success: false, message: 'Error creating profile. Please try again.' });
       }
-    } else {
-      res.status(500).send('Error creating profile. Please try again.');
-    }
   } catch (error) {
-    console.error('Error creating profile:', error);
-    res.status(500).send('Error creating profile. Please try again.');
+      console.error('Error creating profile:', error);
+      res.status(500).json({ success: false, message: 'Error creating profile. Please try again.' });
   }
 });
 
@@ -134,23 +187,23 @@ app.get('/customer-profile', async (req, res) => {
   }
 });
 
-
-
 app.get('/get-client-profile', async (req, res) => {
   try {
     const { phoneNumber } = req.query;
     const query = `
-      SELECT c.*, d.dog_id, d.dog_name, d.breed
+      SELECT c.client_id, c.lastname, c.firstname, c.phone_number,
+             d.dog_id, d.dog_name, d.breed,
+             ah.date, ah.time_slot
       FROM clients c
       LEFT JOIN dogs d ON c.client_id = d.client_id
+      LEFT JOIN appointment_history ah ON c.client_id = ah.client_id AND d.dog_id = ah.dog_id
       WHERE c.phone_number = ?
     `;
     const [clientAndDogs] = await db.query(query, [phoneNumber]);
-    console.log('Query Result:', clientAndDogs);
+
+    console.log('Query Result:', clientAndDogs); // Add this line for debugging
 
     if (clientAndDogs.length > 0) {
-      console.log('Client and Dogs:', clientAndDogs);
-
       // Extract client details
       const clientDetails = {
         client_id: clientAndDogs[0].client_id,
@@ -159,13 +212,33 @@ app.get('/get-client-profile', async (req, res) => {
         phone_number: clientAndDogs[0].phone_number,
       };
 
-      // Extract dogs array
-      const dogsArray = clientAndDogs.map(dog => ({
-        dog_id: dog.dog_id,
-        dog_name: dog.dog_name,
-        breed: dog.breed,
-      }));
-      console.log('Number of Dogs:', dogsArray.length);
+      // Extract distinct dogs and their appointment history
+      const dogsMap = new Map();
+      clientAndDogs.forEach(appointment => {
+        console.log('Individual Appointment:', appointment); // Add this line for debugging
+
+        const { dog_id, dog_name, breed, date, time_slot } = appointment;
+
+        if (!dogsMap.has(dog_id)) {
+          dogsMap.set(dog_id, {
+            dog_id,
+            dog_name,
+            breed,
+            appointment_history: [],
+          });
+        }
+
+        if (date) {
+          dogsMap.get(dog_id).appointment_history.push({
+            date,
+            time_slot,
+          });
+        }
+      });
+
+      const dogsArray = Array.from(dogsMap.values());
+
+      console.log('Formatted Result:', { ...clientDetails, dogs: dogsArray }); // Add this line for debugging
 
       res.json({ ...clientDetails, dogs: dogsArray });
     } else {
